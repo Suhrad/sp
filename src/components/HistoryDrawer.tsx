@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { StockLog, MovementType } from '@/types/stock';
-import { X, History, ArrowDownLeft, ArrowUpRight, ArrowRightLeft, DollarSign, Search, Filter } from 'lucide-react';
+import { X, Clock, Search } from 'lucide-react';
 
 interface HistoryDrawerProps {
   logs: StockLog[];
@@ -30,143 +30,135 @@ export default function HistoryDrawer({ logs, onClose }: HistoryDrawerProps) {
     switch (type) {
       case 'INWARD':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-            <ArrowDownLeft className="w-3 h-3" />
+          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-800 text-white border border-zinc-700">
             + INWARD
           </span>
         );
       case 'OUTWARD':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
-            <ArrowUpRight className="w-3 h-3" />
+          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
             − DISPATCH
           </span>
         );
       case 'TRANSFER':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-            <ArrowRightLeft className="w-3 h-3" />
+          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-800">
             TRANSFER
           </span>
         );
       case 'PRICE_CHANGE':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-            <DollarSign className="w-3 h-3" />
-            RATE CHANGE
+          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white text-black">
+            RATE REVISION
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
-            UPDATE
+          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-500">
+            AUDIT
           </span>
         );
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-end p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-      <div className="w-full sm:max-w-md h-[90vh] sm:h-[85vh] bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-end p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
+      <div className="w-full sm:max-w-md h-[90vh] sm:h-[85vh] bg-[#121215] border border-zinc-800 rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl flex flex-col">
         
         {/* Header */}
-        <div className="flex items-start justify-between pb-3 border-b border-slate-800">
+        <div className="flex items-start justify-between pb-3 border-b border-zinc-800">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-emerald-400">
-              <History className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white">
+              <Clock className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-lg font-extrabold text-white">
-                Activity & Audit Log
+              <h2 className="text-base font-bold text-white font-sans">
+                Audit Trail & Log
               </h2>
-              <p className="text-xs text-slate-400">
-                {logs.length} logged stock adjustments & price changes
+              <p className="text-xs text-zinc-400 font-mono">
+                {logs.length} logged stock movements
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-1 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Filters */}
+        {/* Filter controls */}
         <div className="pt-3 pb-2 space-y-2">
-          {/* Search */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search activity..."
+              placeholder="Search logs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full bg-[#09090b] border border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-white font-mono"
             />
           </div>
 
-          {/* Type Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar text-xs font-mono">
             {['ALL', 'INWARD', 'OUTWARD', 'TRANSFER', 'PRICE_CHANGE'].map((t) => (
               <button
                 key={t}
                 onClick={() => setFilterType(t)}
-                className={`px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap text-[11px] transition-all ${
+                className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap transition-all ${
                   filterType === t
-                    ? 'bg-emerald-500 text-slate-950 font-bold'
-                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                    ? 'bg-white text-black'
+                    : 'bg-[#09090b] text-zinc-500 hover:text-white border border-zinc-800'
                 }`}
               >
-                {t === 'ALL' ? 'All' : t.replace('_', ' ')}
+                {t === 'ALL' ? 'ALL' : t.replace('_', ' ')}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Logs Timeline List */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 mt-2">
+        {/* Log rows */}
+        <div className="flex-1 overflow-y-auto pr-1 space-y-2 mt-2 font-mono">
           {filteredLogs.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 text-xs">
-              No stock logs matching filters yet. Every `+` or `−` bag adjustment will appear here.
+            <div className="text-center py-12 text-zinc-600 text-xs">
+              No audit records matching active filters.
             </div>
           ) : (
             filteredLogs.map((log) => (
               <div
                 key={log.id}
-                className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 text-xs space-y-1.5"
+                className="p-3 rounded-lg bg-[#09090b] border border-zinc-800/80 text-xs space-y-1.5"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="font-extrabold text-white text-sm block">
+                    <span className="font-bold text-white block font-sans">
                       {log.itemName}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-zinc-500">
                       {log.location} {log.targetLocation ? `→ ${log.targetLocation}` : ''}
                     </span>
                   </div>
                   {getBadge(log.type)}
                 </div>
 
-                {/* Change details */}
-                <div className="bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-slate-800 text-[11px] font-semibold flex items-center justify-between">
+                <div className="bg-[#121215] px-2 py-1 rounded border border-zinc-800/60 text-[11px] flex items-center justify-between">
                   {log.type === 'PRICE_CHANGE' ? (
-                    <span>Rate: ₹{log.oldPrice} → ₹{log.newPrice}/kg</span>
+                    <span className="text-white font-bold">Rate: ₹{log.oldPrice} → ₹{log.newPrice}/kg</span>
                   ) : (
-                    <span>
+                    <span className="text-white font-bold">
                       {log.deltaBags && log.deltaBags > 0 ? `+${log.deltaBags}` : log.deltaBags} bags
-                      {log.newBags !== undefined ? ` (Now: ${log.newBags} bags)` : ''}
+                      {log.newBags !== undefined ? ` (Bal: ${log.newBags})` : ''}
                     </span>
                   )}
-                  <span className="text-slate-400 font-normal">
+                  <span className="text-zinc-500 text-[10px]">
                     {log.performedBy}
                   </span>
                 </div>
 
-                {/* Note and Timestamp */}
-                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
-                  <span className="italic truncate max-w-[200px]">
-                    {log.reason || 'Quick update'}
+                <div className="flex items-center justify-between text-[10px] text-zinc-500 pt-0.5">
+                  <span className="truncate max-w-[200px] italic">
+                    {log.reason || 'Direct adjustment'}
                   </span>
                   <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &bull; {new Date(log.timestamp).toLocaleDateString()}</span>
                 </div>

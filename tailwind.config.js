@@ -9,19 +9,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
-          950: '#052e16',
+        dark: {
+          950: '#09090b',
+          900: '#121215',
+          850: '#18181b',
+          800: '#27272a',
+          700: '#3f3f46',
         }
+      },
+      fontFamily: {
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       }
     },
   },

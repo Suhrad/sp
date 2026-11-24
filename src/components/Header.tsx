@@ -4,16 +4,16 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearSession, UserSession } from '@/lib/auth';
 import { 
-  Boxes, 
   Search, 
   AlertTriangle, 
   Plus, 
-  History, 
+  Clock, 
   Download, 
   Settings, 
   LogOut, 
   X,
-  Layers
+  LayoutGrid,
+  Table as TableIcon
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -27,6 +27,8 @@ interface HeaderProps {
   onOpenHistory: () => void;
   onOpenSettings: () => void;
   onExportCSV: () => void;
+  viewMode: 'table' | 'cards';
+  onToggleViewMode: (mode: 'table' | 'cards') => void;
 }
 
 export default function Header({
@@ -40,116 +42,130 @@ export default function Header({
   onOpenHistory,
   onOpenSettings,
   onExportCSV,
+  viewMode,
+  onToggleViewMode,
 }: HeaderProps) {
   const router = useRouter();
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const handleLogout = () => {
-    if (confirm('Are you sure you want to log out of Stock Portal?')) {
+    if (confirm('Log out from Stock Platform?')) {
       clearSession();
       router.replace('/login');
     }
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5">
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
+    <header className="sticky top-0 z-30 bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-14 gap-3">
           
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-2.5 min-w-max">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-md shadow-emerald-500/20">
-              <Boxes className="w-5 h-5 text-slate-950 stroke-[2.2]" />
+          {/* Brand */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-white text-black font-black text-sm flex items-center justify-center rounded-lg tracking-tight">
+              OS
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base sm:text-lg text-white tracking-tight">
-                  STOCK PORTAL
-                </span>
-                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-semibold px-1.5 py-0.5 rounded border border-emerald-500/20">
-                  LIVE
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 hidden sm:block">
-                Godown & Plant Polymer Inventory
-              </p>
+            <div className="leading-none">
+              <span className="font-bold text-sm tracking-tight text-white block">
+                STOCK OS
+              </span>
+              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+                POLYMER ERP
+              </span>
             </div>
           </div>
 
-          {/* Desktop Search Bar */}
-          <div className="hidden md:flex flex-1 max-w-md mx-2">
-            <div className="relative w-full">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {/* Search input */}
+          <div className="flex-1 max-w-sm hidden md:block">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search dana, chips, powder, godown..."
+                placeholder="Search dana, chips, powder..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-8 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="w-full bg-[#121215] border border-zinc-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors font-mono"
               />
               {searchQuery && (
                 <button
                   onClick={() => onSearchChange('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3 h-3" />
                 </button>
               )}
             </div>
           </div>
 
-          {/* Actions & Filters */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Mobile Search Toggle */}
-            <button
-              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-              className="md:hidden p-2 rounded-xl text-slate-300 hover:text-white bg-slate-800/80 border border-slate-700/60"
-              title="Search items"
-            >
-              <Search className="w-4 h-4" />
-            </button>
+          {/* Controls & Actions */}
+          <div className="flex items-center gap-2">
+            
+            {/* View Mode Switcher (Table vs Grid Cards) */}
+            <div className="hidden sm:inline-flex rounded-lg border border-zinc-800 bg-[#121215] p-0.5">
+              <button
+                onClick={() => onToggleViewMode('table')}
+                className={`p-1.5 rounded-md text-xs transition-colors flex items-center gap-1 ${
+                  viewMode === 'table'
+                    ? 'bg-zinc-800 text-white font-bold'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                title="Dense Table View"
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+                <span className="text-[11px] pr-0.5">Table</span>
+              </button>
+              <button
+                onClick={() => onToggleViewMode('cards')}
+                className={`p-1.5 rounded-md text-xs transition-colors flex items-center gap-1 ${
+                  viewMode === 'cards'
+                    ? 'bg-zinc-800 text-white font-bold'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                title="Card View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="text-[11px] pr-0.5">Cards</span>
+              </button>
+            </div>
 
-            {/* Low Stock Filter Button */}
+            {/* Low stock filter toggle */}
             <button
               onClick={onToggleLowStock}
-              className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors border ${
                 lowStockOnly
-                  ? 'bg-rose-500 text-white border-rose-400 shadow-lg shadow-rose-500/25 animate-pulse'
-                  : 'bg-slate-800/80 text-rose-300 border-rose-500/30 hover:bg-rose-500/10'
+                  ? 'bg-red-950/40 text-red-300 border-red-700/60 font-bold'
+                  : 'bg-[#121215] text-zinc-400 border-zinc-800 hover:text-white'
               }`}
-              title="Filter Low Stock Items"
             >
-              <AlertTriangle className="w-3.5 h-3.5" />
+              <AlertTriangle className={`w-3.5 h-3.5 ${lowStockOnly ? 'text-red-400' : 'text-zinc-500'}`} />
               <span className="hidden xs:inline">Low Stock</span>
-              <span className="bg-rose-950/60 px-1.5 py-0.2 rounded-full text-[11px] font-bold text-rose-200">
+              <span className="px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 text-[10px] font-bold">
                 {lowStockCount}
               </span>
             </button>
 
-            {/* Add Item Button */}
+            {/* Add stock lot */}
             <button
               onClick={onOpenAddItem}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
-              title="Add New Stock Item"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-zinc-200 transition-colors shadow-sm"
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span className="hidden sm:inline">Add Item</span>
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Add Lot</span>
             </button>
 
-            {/* History Logs */}
+            {/* Audit Log */}
             <button
               onClick={onOpenHistory}
-              className="p-2 rounded-xl text-slate-300 hover:text-white bg-slate-800/80 border border-slate-700/60 hover:bg-slate-700/50 transition-all"
-              title="Stock Movement History"
+              className="p-1.5 rounded-lg bg-[#121215] border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+              title="Audit Logs"
             >
-              <History className="w-4 h-4" />
+              <Clock className="w-4 h-4" />
             </button>
 
-            {/* Export CSV / Excel */}
+            {/* CSV export */}
             <button
               onClick={onExportCSV}
-              className="p-2 rounded-xl text-slate-300 hover:text-white bg-slate-800/80 border border-slate-700/60 hover:bg-slate-700/50 transition-all hidden sm:flex"
-              title="Export to Excel / CSV"
+              className="p-1.5 rounded-lg bg-[#121215] border border-zinc-800 text-zinc-400 hover:text-white transition-colors hidden sm:block"
+              title="Export CSV"
             >
               <Download className="w-4 h-4" />
             </button>
@@ -157,8 +173,8 @@ export default function Header({
             {/* Settings */}
             <button
               onClick={onOpenSettings}
-              className="p-2 rounded-xl text-slate-300 hover:text-white bg-slate-800/80 border border-slate-700/60 hover:bg-slate-700/50 transition-all"
-              title="App Settings & Password"
+              className="p-1.5 rounded-lg bg-[#121215] border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+              title="Settings & Credentials"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -166,7 +182,7 @@ export default function Header({
             {/* Logout */}
             <button
               onClick={handleLogout}
-              className="p-2 rounded-xl text-rose-400 hover:text-rose-300 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-all"
+              className="p-1.5 rounded-lg bg-[#121215] border border-zinc-800 text-zinc-500 hover:text-red-400 transition-colors"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -174,39 +190,19 @@ export default function Header({
           </div>
         </div>
 
-        {/* Mobile Search Expansion */}
-        {mobileSearchOpen && (
-          <div className="mt-2 pt-2 border-t border-slate-800/80 md:hidden flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                autoFocus
-                placeholder="Search dana, chips, powder..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-8 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => onSearchChange('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <button
-              onClick={() => {
-                setMobileSearchOpen(false);
-                onSearchChange('');
-              }}
-              className="text-xs text-slate-400 hover:text-white px-2 py-2"
-            >
-              Close
-            </button>
+        {/* Mobile search bar */}
+        <div className="pb-2.5 md:hidden">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search items, godowns..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full bg-[#121215] border border-zinc-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-mono"
+            />
           </div>
-        )}
+        </div>
       </div>
     </header>
   );

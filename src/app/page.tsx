@@ -18,6 +18,7 @@ import { getCurrentSession, UserSession } from '@/lib/auth';
 import Header from '@/components/Header';
 import SummaryCards from '@/components/SummaryCards';
 import GodownTabs from '@/components/GodownTabs';
+import StockTable from '@/components/StockTable';
 import StockCard from '@/components/StockCard';
 import AdjustModal from '@/components/AdjustModal';
 import PriceModal from '@/components/PriceModal';
@@ -26,12 +27,12 @@ import AddItemModal from '@/components/AddItemModal';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import SettingsModal from '@/components/SettingsModal';
 
-import { ArrowUpDown, SlidersHorizontal, PackageOpen, Plus } from 'lucide-react';
+import { ArrowUpDown, PackageOpen, Plus } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Authentication & User Session
+  // Authentication
   const [session, setSession] = useState<UserSession | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -39,7 +40,8 @@ export default function DashboardPage() {
   const [items, setItems] = useState<StockItem[]>([]);
   const [logs, setLogs] = useState<StockLog[]>([]);
 
-  // Filters & Controls
+  // View & Filters
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [lowStockOnly, setLowStockOnly] = useState<boolean>(false);
@@ -53,7 +55,6 @@ export default function DashboardPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Check login on mount
   useEffect(() => {
     const curSession = getCurrentSession();
     if (!curSession) {
@@ -61,20 +62,20 @@ export default function DashboardPage() {
     } else {
       setSession(curSession);
       setAuthChecked(true);
-      // Load data
-      const stored = getStoredStock();
-      setItems(stored);
+      setItems(getStoredStock());
       setLogs(getStoredLogs());
+      // On mobile screen size, default to card view
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setViewMode('cards');
+      }
     }
   }, [router]);
 
-  // Persist items whenever changed
   const updateItems = (newItems: StockItem[]) => {
     setItems(newItems);
     saveStoredStock(newItems);
   };
 
-  // Quick single-tap adjustment (+1, -1, +5, etc.)
   const handleQuickAdjust = (item: StockItem, deltaBags: number) => {
     const oldBags = item.totalBags;
     const oldKg = item.kg;
@@ -111,7 +112,6 @@ export default function DashboardPage() {
     setLogs((prev) => [log, ...prev]);
   };
 
-  // Detailed Modal Custom Adjustment
   const handleCustomAdjustConfirm = (
     item: StockItem,
     deltaBags: number,
@@ -152,7 +152,6 @@ export default function DashboardPage() {
     setAdjustTarget(null);
   };
 
-  // Price update with history
   const handlePriceConfirm = (item: StockItem, newPrice: number, note: string) => {
     const oldPrice = item.currentPrice;
     const now = new Date().toISOString();
@@ -191,7 +190,6 @@ export default function DashboardPage() {
     setPriceTarget(null);
   };
 
-  // Transfer stock between godowns
   const handleTransferConfirm = (
     item: StockItem,
     targetLocation: GodownLocation,
@@ -199,7 +197,6 @@ export default function DashboardPage() {
     transferKg: number,
     note: string
   ) => {
-    // 1. Deduct from source item
     const newSourceBags = Math.max(0, item.totalBags - transferBags);
     const newSourceKg = Math.max(0, item.kg - transferKg);
 
@@ -212,7 +209,6 @@ export default function DashboardPage() {
 
     let newItems = items.map((i) => (i.id === item.id ? updatedSource : i));
 
-    // 2. Add to target godown (find if already exists or create new)
     const existingTargetIndex = newItems.findIndex(
       (i) => i.name.toLowerCase() === item.name.toLowerCase() && i.location === targetLocation
     );
@@ -227,7 +223,6 @@ export default function DashboardPage() {
       };
       newItems[existingTargetIndex] = updatedTarget;
     } else {
-      // Create new lot in destination godown
       const newLot: StockItem = {
         id: 'trans-' + Date.now(),
         name: item.name,
@@ -263,7 +258,6 @@ export default function DashboardPage() {
     setTransferTarget(null);
   };
 
-  // Add new item
   const handleAddItem = (data: Omit<StockItem, 'id' | 'updatedAt' | 'priceHistory'>) => {
     const now = new Date().toISOString();
     const newItem: StockItem = {
@@ -296,9 +290,8 @@ export default function DashboardPage() {
     setAddItemOpen(false);
   };
 
-  // Delete item
   const handleDeleteItem = (item: StockItem) => {
-    if (confirm(`Are you sure you want to delete "${item.name}" from ${item.location}?`)) {
+    if (confirm(`Remove "${item.name}" from ${item.location}?`)) {
       const newItems = items.filter((i) => i.id !== item.id);
       updateItems(newItems);
 
@@ -316,14 +309,12 @@ export default function DashboardPage() {
     }
   };
 
-  // Reset to original factory sheet
   const handleResetFactory = () => {
     updateItems(INITIAL_STOCK);
     localStorage.removeItem('polymer_stock_logs_v1');
     setLogs([]);
   };
 
-  // Export CSV
   const handleExportCSV = () => {
     const csv = exportToCSV(items);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -336,7 +327,6 @@ export default function DashboardPage() {
     document.body.removeChild(link);
   };
 
-  // Export JSON Backup
   const handleExportJSON = () => {
     const data = {
       exportedAt: new Date().toISOString(),
@@ -354,7 +344,6 @@ export default function DashboardPage() {
     document.body.removeChild(link);
   };
 
-  // Import JSON Backup
   const handleImportJSON = (jsonStr: string) => {
     const parsed = JSON.parse(jsonStr);
     if (parsed.items && Array.isArray(parsed.items)) {
@@ -366,26 +355,19 @@ export default function DashboardPage() {
     }
   };
 
-  // Live Summary Calculation
   const summary = useMemo(() => calculateSummary(items), [items]);
 
-  // Filter & Sort Items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      // Location filter
       if (selectedLocation !== 'All Locations' && item.location !== selectedLocation) {
         return false;
       }
-
-      // Low Stock filter
       if (lowStockOnly) {
         const isLow = item.isBulk
           ? item.kg <= item.lowStockThresholdKg
           : item.totalBags <= item.lowStockThresholdBags;
         if (!isLow) return false;
       }
-
-      // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -393,7 +375,6 @@ export default function DashboardPage() {
           item.location.toLowerCase().includes(q)
         );
       }
-
       return true;
     }).sort((a, b) => {
       switch (sortBy) {
@@ -413,19 +394,18 @@ export default function DashboardPage() {
     });
   }, [items, selectedLocation, lowStockOnly, searchQuery, sortBy]);
 
-  // Loading state while checking auth
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans">
       
-      {/* Sticky Header */}
+      {/* Navigation Header */}
       <Header
         session={session}
         searchQuery={searchQuery}
@@ -437,12 +417,14 @@ export default function DashboardPage() {
         onOpenHistory={() => setHistoryOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
         onExportCSV={handleExportCSV}
+        viewMode={viewMode}
+        onToggleViewMode={setViewMode}
       />
 
-      {/* Main Content Area */}
+      {/* Main Workspace Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 space-y-4">
         
-        {/* Metric Summary Cards */}
+        {/* Metric Bar */}
         <SummaryCards
           summary={summary}
           items={items}
@@ -450,73 +432,79 @@ export default function DashboardPage() {
           onSelectLocation={setSelectedLocation}
         />
 
-        {/* Godown Pills / Horizontal Tabs */}
+        {/* Location Tabs */}
         <GodownTabs
           selectedLocation={selectedLocation}
           onSelectLocation={setSelectedLocation}
           items={items}
         />
 
-        {/* Filter Bar & Sort Controls */}
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <div className="text-slate-400 font-semibold flex items-center gap-1.5">
-            <span>Showing <strong className="text-white">{filteredItems.length}</strong> items</span>
+        {/* Filter & Sorting Controls */}
+        <div className="flex items-center justify-between gap-2 text-xs font-mono">
+          <div className="text-zinc-500 flex items-center gap-2">
+            <span>SHOWING <strong className="text-white">{filteredItems.length}</strong> LOTS</span>
             {lowStockOnly && (
-              <span className="text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 font-bold">
-                Low Stock Filter Active
+              <span className="text-red-400 bg-red-950 px-2 py-0.5 rounded border border-red-800 text-[10px] font-bold">
+                LOW STOCK FILTER
               </span>
             )}
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 hidden sm:inline">Sort:</span>
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-slate-850 border border-slate-800 rounded-xl px-2.5 py-1.5 text-slate-300 hover:text-white text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-              >
-                <option value="value-desc">Highest Value (₹)</option>
-                <option value="bags-desc">Bags: High → Low</option>
-                <option value="bags-asc">Bags: Low → High</option>
-                <option value="price-desc">Price: High → Low</option>
-                <option value="name">Name (A-Z)</option>
-              </select>
-            </div>
+            <span className="text-zinc-500 hidden sm:inline">SORT:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-[#121215] border border-zinc-800 rounded-lg px-2.5 py-1 text-zinc-300 text-xs font-mono focus:outline-none focus:border-zinc-500 cursor-pointer"
+            >
+              <option value="value-desc">VALUATION (HIGH → LOW)</option>
+              <option value="bags-desc">BAGS (HIGH → LOW)</option>
+              <option value="bags-asc">BAGS (LOW → HIGH)</option>
+              <option value="price-desc">RATE (HIGH → LOW)</option>
+              <option value="name">NAME (A-Z)</option>
+            </select>
           </div>
         </div>
 
-        {/* Stock Items Grid */}
+        {/* Main Content: Table View vs Card View */}
         {filteredItems.length === 0 ? (
-          <div className="text-center py-16 bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6">
-            <PackageOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-white mb-1">
-              No stock items found
+          <div className="text-center py-16 bg-[#121215] border border-zinc-800 rounded-xl p-6 font-mono">
+            <PackageOpen className="w-10 h-10 text-zinc-600 mx-auto mb-2.5 stroke-[1.5]" />
+            <h3 className="text-sm font-bold text-white mb-1">
+              NO INVENTORY RECORDS FOUND
             </h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">
+            <p className="text-xs text-zinc-500 max-w-sm mx-auto mb-3">
               {lowStockOnly
-                ? 'No items are currently below low stock thresholds in this view.'
-                : 'No items match your active filters or search terms.'}
+                ? 'No items currently below low-stock threshold in this view.'
+                : 'No items match your active search filter.'}
             </p>
             {lowStockOnly ? (
               <button
                 onClick={() => setLowStockOnly(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white rounded-xl transition-all"
+                className="px-3.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-lg transition-all"
               >
-                Clear Low Stock Filter
+                Clear Filter
               </button>
             ) : (
               <button
                 onClick={() => setAddItemOpen(true)}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl transition-all inline-flex items-center gap-1.5"
+                className="px-3.5 py-1.5 bg-white text-black text-xs font-bold rounded-lg transition-all"
               >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>Add New Item Here</span>
+                + Register New Lot
               </button>
             )}
           </div>
+        ) : viewMode === 'table' ? (
+          <StockTable
+            items={filteredItems}
+            onQuickAdjust={handleQuickAdjust}
+            onOpenCustomAdjust={(item, isPlus) => setAdjustTarget({ item, isPlus })}
+            onOpenPriceUpdate={(item) => setPriceTarget(item)}
+            onOpenTransfer={(item) => setTransferTarget(item)}
+            onDelete={handleDeleteItem}
+          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredItems.map((item) => (
               <StockCard
                 key={item.id}
@@ -532,14 +520,14 @@ export default function DashboardPage() {
         )}
       </main>
 
-      {/* Floating Action Button on Mobile */}
+      {/* Floating Add on Mobile */}
       <div className="fixed bottom-4 right-4 sm:hidden z-30">
         <button
           onClick={() => setAddItemOpen(true)}
-          className="w-14 h-14 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shadow-xl shadow-emerald-500/40 active:scale-95 transition-all"
-          title="Add New Stock Item"
+          className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-95 transition-all"
+          title="Add New Lot"
         >
-          <Plus className="w-7 h-7 stroke-[2.5]" />
+          <Plus className="w-6 h-6 stroke-[2.5]" />
         </button>
       </div>
 

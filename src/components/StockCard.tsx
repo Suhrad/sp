@@ -2,17 +2,15 @@
 
 import { StockItem } from '@/types/stock';
 import { 
-  Package, 
   Plus, 
   Minus, 
   AlertTriangle, 
-  TrendingUp, 
-  TrendingDown, 
   ArrowRightLeft, 
   Edit3, 
-  MoreVertical,
-  Sliders,
-  Trash2
+  MoreHorizontal, 
+  Trash2,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -41,48 +39,44 @@ export default function StockCard({
 
   const totalValue = item.kg * item.currentPrice;
 
-  // Price difference calculation
   const hasPriceChange = item.previousPrice !== null && item.previousPrice !== item.currentPrice;
   const priceDiff = hasPriceChange ? item.currentPrice - (item.previousPrice ?? 0) : 0;
-  const pricePercent = hasPriceChange && item.previousPrice
-    ? ((priceDiff / item.previousPrice) * 100).toFixed(1)
-    : null;
 
   return (
     <div
-      className={`relative bg-slate-850/90 rounded-2xl border transition-all duration-200 overflow-hidden shadow-md flex flex-col justify-between ${
+      className={`relative bg-[#121215] rounded-xl border transition-all duration-150 flex flex-col justify-between ${
         isLowStock
-          ? 'border-rose-500/40 bg-gradient-to-b from-rose-950/20 via-slate-850 to-slate-900 shadow-rose-950/20'
-          : 'border-slate-800 hover:border-slate-700'
+          ? 'border-red-900/80 bg-gradient-to-b from-red-950/10 to-[#121215]'
+          : 'border-zinc-800 hover:border-zinc-700'
       }`}
     >
-      {/* Top Header */}
-      <div className="p-3.5 sm:p-4 pb-2">
-        <div className="flex items-start justify-between gap-2">
+      <div className="p-4 pb-3">
+        {/* Top Header */}
+        <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
+              <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
                 {item.location}
               </span>
               {isLowStock && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">
-                  <AlertTriangle className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-800">
+                  <AlertTriangle className="w-2.5 h-2.5" />
                   Low Stock
                 </span>
               )}
             </div>
-            <h3 className="font-extrabold text-white text-base sm:text-lg leading-tight truncate" title={item.name}>
+            <h3 className="font-bold text-white text-base leading-tight truncate font-sans" title={item.name}>
               {item.name}
             </h3>
           </div>
 
-          {/* Action Menu Toggle */}
+          {/* Menu */}
           <div className="relative">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
             >
-              <MoreVertical className="w-4 h-4" />
+              <MoreHorizontal className="w-4 h-4" />
             </button>
 
             {menuOpen && (
@@ -91,36 +85,36 @@ export default function StockCard({
                   className="fixed inset-0 z-40"
                   onClick={() => setMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-8 z-50 w-44 bg-slate-800 border border-slate-700 rounded-xl shadow-xl py-1 text-xs">
+                <div className="absolute right-0 top-8 z-50 w-44 bg-[#121215] border border-zinc-800 rounded-lg shadow-2xl py-1 text-xs font-sans">
                   <button
                     onClick={() => {
                       setMenuOpen(false);
                       onOpenTransfer(item);
                     }}
-                    className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
                   >
-                    <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Transfer to Godown</span>
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    <span>Transfer Godown</span>
                   </button>
                   <button
                     onClick={() => {
                       setMenuOpen(false);
                       onOpenPriceUpdate(item);
                     }}
-                    className="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
                   >
-                    <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Update Price</span>
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Update Rate</span>
                   </button>
                   <button
                     onClick={() => {
                       setMenuOpen(false);
                       onDelete(item);
                     }}
-                    className="w-full text-left px-3 py-2 text-rose-400 hover:bg-rose-500/10 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 text-red-400 hover:bg-red-950/40 flex items-center gap-2"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Item</span>
+                    <span>Delete Lot</span>
                   </button>
                 </div>
               </>
@@ -128,69 +122,68 @@ export default function StockCard({
           </div>
         </div>
 
-        {/* Quantities Section */}
-        <div className="mt-3 grid grid-cols-2 gap-2 bg-slate-900/80 rounded-xl p-2.5 border border-slate-800">
+        {/* Quantities */}
+        <div className="grid grid-cols-2 gap-2 bg-[#09090b] rounded-lg p-2.5 border border-zinc-800/80 font-mono">
           <div>
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-              Bags in Stock
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500 block">
+              Packed Stock
             </span>
             <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-2xl font-black text-white">
+              <span className="text-2xl font-bold text-white tabular-nums">
                 {item.totalBags}
               </span>
-              <span className="text-xs text-slate-400">bags</span>
+              <span className="text-xs text-zinc-500">bags</span>
             </div>
             {item.avgKgPerBag > 0 && (
-              <span className="text-[10px] text-slate-500">
-                ~{item.avgKgPerBag} kg/bag
+              <span className="text-[10px] text-zinc-500 block">
+                ~{item.avgKgPerBag}kg/bag
               </span>
             )}
           </div>
 
-          <div className="border-l border-slate-800 pl-2.5">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-              Total Weight
+          <div className="border-l border-zinc-800/80 pl-2.5">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500 block">
+              Net Weight
             </span>
             <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-2xl font-black text-emerald-400">
+              <span className="text-2xl font-bold text-white tabular-nums">
                 {item.kg.toLocaleString()}
               </span>
-              <span className="text-xs text-slate-400">KG</span>
+              <span className="text-xs text-zinc-500">KG</span>
             </div>
-            <span className="text-[10px] text-slate-500">
-              {(item.kg / 1000).toFixed(2)} Tons
+            <span className="text-[10px] text-zinc-500 block">
+              {(item.kg / 1000).toFixed(2)} MT
             </span>
           </div>
         </div>
 
-        {/* Price & Value Details */}
-        <div className="mt-2.5 flex items-center justify-between text-xs pt-1 border-t border-slate-800/60">
+        {/* Rate & Total Value */}
+        <div className="mt-2.5 flex items-center justify-between text-xs pt-1 border-t border-zinc-800/60 font-mono">
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-400">Rate:</span>
+              <span className="text-zinc-500">Rate:</span>
               <button
                 onClick={() => onOpenPriceUpdate(item)}
-                className="font-extrabold text-white hover:text-emerald-400 underline underline-offset-2 flex items-center gap-1"
-                title="Click to change price"
+                className="font-bold text-white hover:underline flex items-center gap-1"
+                title="Click to update rate"
               >
                 <span>₹{item.currentPrice}/kg</span>
-                <Edit3 className="w-3 h-3 text-emerald-500 inline" />
+                <Edit3 className="w-2.5 h-2.5 text-zinc-500" />
               </button>
             </div>
 
-            {/* Price change badge */}
             {hasPriceChange && (
-              <div className="flex items-center gap-1 text-[10px] mt-0.5">
-                <span className="text-slate-400">Was: ₹{item.previousPrice}</span>
+              <div className="flex items-center gap-1 text-[10px] mt-0.5 text-zinc-500">
+                <span>was ₹{item.previousPrice}</span>
                 {priceDiff > 0 ? (
-                  <span className="inline-flex items-center text-emerald-400 font-bold">
+                  <span className="text-zinc-300 font-bold inline-flex items-center">
                     <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
-                    +{priceDiff} ({pricePercent}%)
+                    +₹{priceDiff}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center text-blue-400 font-bold">
+                  <span className="text-zinc-400 font-bold inline-flex items-center">
                     <TrendingDown className="w-2.5 h-2.5 mr-0.5" />
-                    {priceDiff} ({pricePercent}%)
+                    -₹{Math.abs(priceDiff)}
                   </span>
                 )}
               </div>
@@ -198,63 +191,61 @@ export default function StockCard({
           </div>
 
           <div className="text-right">
-            <span className="text-slate-400 text-[10px] block">Lot Value</span>
-            <span className="font-extrabold text-emerald-400 text-sm">
+            <span className="text-zinc-500 text-[10px] block">Valuation</span>
+            <span className="font-bold text-white text-sm tabular-nums">
               ₹{totalValue.toLocaleString('en-IN')}
             </span>
           </div>
         </div>
       </div>
 
-      {/* +/- Action Bar (Optimized for Mobile Thumbs) */}
-      <div className="bg-slate-900/90 border-t border-slate-800/80 p-2.5">
+      {/* +/- Action Bar */}
+      <div className="bg-[#09090b] border-t border-zinc-800 p-2 rounded-b-xl">
         <div className="flex items-center gap-1.5">
-          
-          {/* Main Minus Button (-1) */}
+          {/* Minus 1 */}
           <button
             onClick={() => onQuickAdjust(item, -1)}
             disabled={item.totalBags <= 0 && !item.isBulk}
-            className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-rose-950/40 hover:text-rose-400 active:bg-rose-900/60 border border-slate-700 hover:border-rose-500/40 text-slate-200 font-black text-sm flex items-center justify-center gap-1 touch-active transition-all disabled:opacity-30 disabled:pointer-events-none"
-            title="Deduct 1 Bag (-1)"
+            className="flex-1 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 font-mono font-bold text-xs flex items-center justify-center gap-1 active:scale-95 disabled:opacity-20 transition-all"
+            title="Deduct 1 bag (-1)"
           >
-            <Minus className="w-4 h-4 stroke-[3]" />
+            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>1</span>
           </button>
 
-          {/* Quick presets for Mobile */}
+          {/* Quick -5 */}
           <button
             onClick={() => onQuickAdjust(item, -5)}
             disabled={item.totalBags < 5 && !item.isBulk}
-            className="px-2.5 py-2 rounded-xl bg-slate-800/60 hover:bg-rose-950/30 text-slate-400 hover:text-rose-300 border border-slate-700/60 font-bold text-xs touch-active transition-all disabled:opacity-20 disabled:pointer-events-none"
-            title="Deduct 5 Bags (-5)"
+            className="px-2.5 py-2 rounded-lg bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 border border-zinc-800/80 font-mono text-[11px] font-bold disabled:opacity-20"
           >
             -5
           </button>
 
+          {/* Custom dialog */}
           <button
             onClick={() => onOpenCustomAdjust(item, true)}
-            className="px-2.5 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 font-semibold text-xs touch-active transition-all flex items-center gap-1"
-            title="Custom Inward / Outward"
+            className="px-2.5 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 font-mono text-xs font-semibold"
+            title="Custom inward or dispatch"
           >
-            <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden xs:inline">±Qty</span>
+            &plusmn;Qty
           </button>
 
+          {/* Quick +5 */}
           <button
             onClick={() => onQuickAdjust(item, 5)}
-            className="px-2.5 py-2 rounded-xl bg-slate-800/60 hover:bg-emerald-950/30 text-slate-400 hover:text-emerald-300 border border-slate-700/60 font-bold text-xs touch-active transition-all"
-            title="Add 5 Bags (+5)"
+            className="px-2.5 py-2 rounded-lg bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 border border-zinc-800/80 font-mono text-[11px] font-bold"
           >
             +5
           </button>
 
-          {/* Main Plus Button (+1) */}
+          {/* Plus 1 */}
           <button
             onClick={() => onQuickAdjust(item, 1)}
-            className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-black text-sm flex items-center justify-center gap-1 shadow-md shadow-emerald-500/20 touch-active transition-all"
-            title="Add 1 Bag (+1)"
+            className="flex-1 py-2 rounded-lg bg-white hover:bg-zinc-200 text-black font-mono font-bold text-xs flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
+            title="Add 1 bag (+1)"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>1</span>
           </button>
         </div>
