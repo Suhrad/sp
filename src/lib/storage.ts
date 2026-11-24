@@ -1,8 +1,8 @@
 import { StockItem, StockLog, GodownLocation, StockSummary } from '@/types/stock';
 import { INITIAL_STOCK } from '@/data/initialStock';
 
-const STORAGE_KEY_STOCK = 'polymer_stock_items_v3';
-const STORAGE_KEY_LOGS = 'polymer_stock_logs_v3';
+const STORAGE_KEY_STOCK = 'polymer_stock_items_v4';
+const STORAGE_KEY_LOGS = 'polymer_stock_logs_v4';
 
 export function getStoredStock(): StockItem[] {
   if (typeof window === 'undefined') return INITIAL_STOCK;
@@ -13,7 +13,6 @@ export function getStoredStock(): StockItem[] {
       return INITIAL_STOCK;
     }
     const items: StockItem[] = JSON.parse(data);
-    // Ensure all items have categories if missing
     return items.map((item) => {
       if (!item.category) {
         const found = INITIAL_STOCK.find((i) => i.id === item.id);
@@ -65,6 +64,75 @@ export function appendLog(log: Omit<StockLog, 'id' | 'timestamp'>) {
   };
   saveStoredLogs([newLog, ...currentLogs]);
   return newLog;
+}
+
+// -------------------------------------------------------------
+// Real-Time Cloud Sync API Integration
+// -------------------------------------------------------------
+
+export async function fetchCloudInventory(): Promise<{
+  items: StockItem[];
+  logs: StockLog[];
+  postgresActive: boolean;
+} | null> {
+  try {
+    const res = await fetch('/api/inventory', {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.success && Array.isArray(data.items)) {
+      return {
+        items: data.items,
+        logs: Array.isArray(data.logs) ? data.logs : [],
+        postgresActive: Boolean(data.postgresActive),
+      };
+    }
+  } catch (err) {
+    console.warn('Could not sync with cloud DB, using local copy:', err);
+  }
+  return null;
+}
+
+export async function syncItemToCloud(item: StockItem, log?: Omit<StockLog, 'id' | 'timestamp'>) {
+  try {
+    await fetch('/api/inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'UPSERT_ITEM',
+        item,
+        log,
+      }),
+    });
+  } catch (err) {
+    console.warn('Background cloud sync failed for item:', item.name);
+  }
+}
+
+export async function deleteItemFromCloud(id: string, log?: Omit<StockLog, 'id' | 'timestamp'>) {
+  try {
+    await fetch('/api/inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'DELETE_ITEM',
+        id,
+        log,
+      }),
+    });
+  } catch (err) {
+    console.warn('Background cloud sync failed for delete:', id);
+  }
+}
+
+export async function resetCloudDatabase(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/inventory/reset', { method: 'POST' });
+    return res.ok;
+  } catch (err) {
+    return false;
+  }
 }
 
 export function calculateSummary(items: StockItem[]): StockSummary {

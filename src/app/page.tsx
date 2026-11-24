@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { StockItem, StockLog, GodownLocation } from '@/types/stock';
 import { INITIAL_STOCK } from '@/data/initialStock';
@@ -11,7 +11,11 @@ import {
   saveStoredLogs, 
   appendLog, 
   calculateSummary, 
-  exportToCSV 
+  exportToCSV,
+  fetchCloudInventory,
+  syncItemToCloud,
+  deleteItemFromCloud,
+  resetCloudDatabase
 } from '@/lib/storage';
 import { getCurrentSession, UserSession } from '@/lib/auth';
 
@@ -41,6 +45,10 @@ export default function DashboardPage() {
   const [items, setItems] = useState<StockItem[]>([]);
   const [logs, setLogs] = useState<StockLog[]>([]);
 
+  // Cloud Sync State
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isPostgresConnected, setIsPostgresConnected] = useState<boolean>(false);
+
   // View & Filters
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
@@ -58,6 +66,24 @@ export default function DashboardPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Sync with Cloud Database
+  const syncWithCloud = useCallback(async () => {
+    setIsSyncing(true);
+    const cloudData = await fetchCloudInventory();
+    if (cloudData) {
+      if (cloudData.items && cloudData.items.length > 0) {
+        setItems(cloudData.items);
+        saveStoredStock(cloudData.items);
+      }
+      if (cloudData.logs && cloudData.logs.length > 0) {
+        setLogs(cloudData.logs);
+        saveStoredLogs(cloudData.logs);
+      }
+      setIsPostgresConnected(cloudData.postgresActive);
+    }
+    setIsSyncing(false);
+  }, []);
+
   useEffect(() => {
     const curSession = getCurrentSession();
     if (!curSession) {
@@ -65,13 +91,32 @@ export default function DashboardPage() {
     } else {
       setSession(curSession);
       setAuthChecked(true);
-      setItems(getStoredStock());
+
+      // Fast immediate cache load
+      const cached = getStoredStock();
+      setItems(cached);
       setLogs(getStoredLogs());
+
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
         setViewMode('cards');
       }
+
+      // Initial cloud pull
+      syncWithCloud();
+
+      // Poll cloud database every 5 seconds for multi-device sync
+      const interval = setInterval(syncWithCloud, 5000);
+
+      // Sync immediately when switching back to tab/window
+      const onFocus = () => syncWithCloud();
+      window.addEventListener('focus', onFocus);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('focus', onFocus);
+      };
     }
-  }, [router]);
+  }, [router, syncWithCloud]);
 
   const updateItems = (newItems: StockItem[]) => {
     setItems(newItems);
@@ -96,11 +141,11 @@ export default function DashboardPage() {
     const newItems = items.map((i) => (i.id === item.id ? updatedItem : i));
     updateItems(newItems);
 
-    const log = appendLog({
+    const logPayload = {
       itemId: item.id,
       itemName: item.name,
       location: item.location,
-      type: deltaBags > 0 ? 'INWARD' : 'OUTWARD',
+      type: deltaBags > 0 ? ('INWARD' as const) : ('OUTWARD' as const),
       deltaBags,
       deltaKg,
       oldBags,
@@ -109,9 +154,13 @@ export default function DashboardPage() {
       newKg,
       reason: deltaBags > 0 ? `Quick +${deltaBags} bags` : `Quick ${deltaBags} bags dispatch`,
       performedBy: session?.username || 'Admin',
-    });
+    };
 
+    const log = appendLog(logPayload);
     setLogs((prev) => [log, ...prev]);
+
+    // Background push to Cloud DB
+    syncItemToCloud(updatedItem, logPayload);
   };
 
   const handleCustomAdjustConfirm = (
@@ -135,11 +184,11 @@ export default function DashboardPage() {
     const newItems = items.map((i) => (i.id === item.id ? updatedItem : i));
     updateItems(newItems);
 
-    const log = appendLog({
+    const logPayload = {
       itemId: item.id,
       itemName: item.name,
       location: item.location,
-      type: deltaBags >= 0 ? 'INWARD' : 'OUTWARD',
+      type: deltaBags >= 0 ? ('INWARD' as const) : ('OUTWARD' as const),
       deltaBags,
       deltaKg,
       oldBags,
@@ -148,9 +197,13 @@ export default function DashboardPage() {
       newKg,
       reason,
       performedBy: session?.username || 'Admin',
-    });
+    };
 
+    const log = appendLog(logPayload);
     setLogs((prev) => [log, ...prev]);
+
+    // Background push to Cloud DB
+    syncItemToCloud(updatedItem, logPayload);
     setAdjustTarget(null);
   };
 
@@ -177,18 +230,22 @@ export default function DashboardPage() {
     const newItems = items.map((i) => (i.id === item.id ? updatedItem : i));
     updateItems(newItems);
 
-    const log = appendLog({
+    const logPayload = {
       itemId: item.id,
       itemName: item.name,
       location: item.location,
-      type: 'PRICE_CHANGE',
+      type: 'PRICE_CHANGE' as const,
       oldPrice,
       newPrice,
       reason: note || `Price updated: ₹${oldPrice} → ₹${newPrice}/kg`,
       performedBy: session?.username || 'Admin',
-    });
+    };
 
+    const log = appendLog(logPayload);
     setLogs((prev) => [log, ...prev]);
+
+    // Background push to Cloud DB
+    syncItemToCloud(updatedItem, logPayload);
     setPriceTarget(null);
   };
 
@@ -215,9 +272,11 @@ export default function DashboardPage() {
       (i) => i.name.toLowerCase() === item.name.toLowerCase() && i.location === targetLocation
     );
 
+    let updatedTarget: StockItem;
+
     if (existingTargetIndex >= 0) {
       const targetItem = newItems[existingTargetIndex];
-      const updatedTarget = {
+      updatedTarget = {
         ...targetItem,
         totalBags: targetItem.totalBags + transferBags,
         kg: targetItem.kg + transferKg,
@@ -225,7 +284,7 @@ export default function DashboardPage() {
       };
       newItems[existingTargetIndex] = updatedTarget;
     } else {
-      const newLot: StockItem = {
+      updatedTarget = {
         id: 'trans-' + Date.now(),
         name: item.name,
         location: targetLocation,
@@ -240,24 +299,30 @@ export default function DashboardPage() {
         updatedAt: new Date().toISOString(),
         priceHistory: [{ id: 'ph-' + Date.now(), price: item.currentPrice, changedAt: new Date().toISOString(), changedBy: session?.username || 'Transfer' }],
       };
-      newItems = [newLot, ...newItems];
+      newItems = [updatedTarget, ...newItems];
     }
 
     updateItems(newItems);
 
-    const log = appendLog({
+    const logPayload = {
       itemId: item.id,
       itemName: item.name,
       location: item.location,
       targetLocation,
-      type: 'TRANSFER',
+      type: 'TRANSFER' as const,
       deltaBags: transferBags,
       deltaKg: transferKg,
       reason: note || `Transferred ${transferBags} bags from ${item.location} to ${targetLocation}`,
       performedBy: session?.username || 'Admin',
-    });
+    };
 
+    const log = appendLog(logPayload);
     setLogs((prev) => [log, ...prev]);
+
+    // Push source and target to cloud
+    syncItemToCloud(updatedSource);
+    syncItemToCloud(updatedTarget, logPayload);
+
     setTransferTarget(null);
   };
 
@@ -269,16 +334,20 @@ export default function DashboardPage() {
     const newItems = items.map((i) => (i.id === updatedItem.id ? updatedItem : i));
     updateItems(newItems);
 
-    const log = appendLog({
+    const logPayload = {
       itemId: updatedItem.id,
       itemName: updatedItem.name,
       location: updatedItem.location,
-      type: 'CORRECTION',
+      type: 'CORRECTION' as const,
       reason: `Edited details${nameChanged ? ` (renamed from "${oldItem?.name}")` : ''}${locationChanged ? ` (moved from ${oldItem?.location})` : ''}`,
       performedBy: session?.username || 'Admin',
-    });
+    };
 
+    const log = appendLog(logPayload);
     setLogs((prev) => [log, ...prev]);
+
+    // Push update to Cloud DB
+    syncItemToCloud(updatedItem, logPayload);
     setEditTarget(null);
   };
 
@@ -299,18 +368,22 @@ export default function DashboardPage() {
     const newItems = [newItem, ...items];
     updateItems(newItems);
 
-    const log = appendLog({
+    const logPayload = {
       itemId: newItem.id,
       itemName: newItem.name,
       location: newItem.location,
-      type: 'INWARD',
+      type: 'INWARD' as const,
       deltaBags: newItem.totalBags,
       deltaKg: newItem.kg,
       reason: 'New stock item created',
       performedBy: session?.username || 'Admin',
-    });
+    };
 
+    const log = appendLog(logPayload);
     setLogs((prev) => [log, ...prev]);
+
+    // Push new item to Cloud DB
+    syncItemToCloud(newItem, logPayload);
     setAddItemOpen(false);
   };
 
@@ -319,24 +392,30 @@ export default function DashboardPage() {
       const newItems = items.filter((i) => i.id !== item.id);
       updateItems(newItems);
 
-      const log = appendLog({
+      const logPayload = {
         itemId: item.id,
         itemName: item.name,
         location: item.location,
-        type: 'OUTWARD',
+        type: 'OUTWARD' as const,
         deltaBags: -item.totalBags,
         deltaKg: -item.kg,
         reason: 'Item deleted from inventory',
         performedBy: session?.username || 'Admin',
-      });
+      };
+
+      const log = appendLog(logPayload);
       setLogs((prev) => [log, ...prev]);
+
+      // Delete from Cloud DB
+      deleteItemFromCloud(item.id, logPayload);
     }
   };
 
-  const handleResetFactory = () => {
+  const handleResetFactory = async () => {
     updateItems(INITIAL_STOCK);
-    localStorage.removeItem('polymer_stock_logs_v3');
+    localStorage.removeItem('polymer_stock_logs_v4');
     setLogs([]);
+    await resetCloudDatabase();
   };
 
   const handleExportCSV = () => {
@@ -372,6 +451,9 @@ export default function DashboardPage() {
     const parsed = JSON.parse(jsonStr);
     if (parsed.items && Array.isArray(parsed.items)) {
       updateItems(parsed.items);
+      for (const it of parsed.items) {
+        syncItemToCloud(it);
+      }
       if (parsed.logs && Array.isArray(parsed.logs)) {
         saveStoredLogs(parsed.logs);
         setLogs(parsed.logs);
@@ -383,25 +465,21 @@ export default function DashboardPage() {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      // Location filter
       if (selectedLocation !== 'All Locations' && item.location !== selectedLocation) {
         return false;
       }
-      // Category filter
       if (categoryFilter === 'RAW MATERIAL' && item.category !== 'Raw Material') {
         return false;
       }
       if (categoryFilter === 'FINISHED GOODS' && item.category !== 'Finished Goods') {
         return false;
       }
-      // Low stock filter
       if (lowStockOnly) {
         const isLow = item.isBulk
           ? item.kg <= item.lowStockThresholdKg
           : item.totalBags <= item.lowStockThresholdBags;
         if (!isLow) return false;
       }
-      // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -456,6 +534,9 @@ export default function DashboardPage() {
         onExportCSV={handleExportCSV}
         viewMode={viewMode}
         onToggleViewMode={setViewMode}
+        isSyncing={isSyncing}
+        isPostgresConnected={isPostgresConnected}
+        onManualSync={syncWithCloud}
       />
 
       {/* Main Workspace Container */}
@@ -631,6 +712,8 @@ export default function DashboardPage() {
           onExportJSON={handleExportJSON}
           onImportJSON={handleImportJSON}
           items={items}
+          isPostgresConnected={isPostgresConnected}
+          onManualSync={syncWithCloud}
         />
       )}
     </div>

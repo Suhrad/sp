@@ -13,7 +13,9 @@ import {
   LogOut, 
   X,
   LayoutGrid,
-  Table as TableIcon
+  Table as TableIcon,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -31,6 +33,9 @@ interface HeaderProps {
   onExportCSV: () => void;
   viewMode: 'table' | 'cards';
   onToggleViewMode: (mode: 'table' | 'cards') => void;
+  isSyncing?: boolean;
+  isPostgresConnected?: boolean;
+  onManualSync?: () => void;
 }
 
 export default function Header({
@@ -48,6 +53,9 @@ export default function Header({
   onExportCSV,
   viewMode,
   onToggleViewMode,
+  isSyncing,
+  isPostgresConnected,
+  onManualSync,
 }: HeaderProps) {
   const router = useRouter();
 
@@ -63,16 +71,27 @@ export default function Header({
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14 gap-3">
           
-          {/* Brand */}
+          {/* Brand & Cloud Status */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-white text-black font-black text-sm flex items-center justify-center rounded-lg tracking-tight">
               OS
             </div>
             <div className="leading-none">
-              <span className="font-bold text-sm tracking-tight text-white block">
-                STOCK OS
-              </span>
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-sm tracking-tight text-white block">
+                  STOCK OS
+                </span>
+                {/* Cloud Live Badge */}
+                <button
+                  onClick={onManualSync}
+                  className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                  title="Click to manually refresh from Cloud Database"
+                >
+                  <Cloud className={`w-2.5 h-2.5 ${isSyncing ? 'text-blue-400 animate-spin' : isPostgresConnected ? 'text-emerald-400' : 'text-zinc-400'}`} />
+                  <span>{isPostgresConnected ? 'POSTGRES' : 'CLOUD SYNC'}</span>
+                </button>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mt-0.5">
                 ENTERPRISE ERP
               </span>
             </div>
@@ -103,7 +122,7 @@ export default function Header({
           {/* Controls & Actions */}
           <div className="flex items-center gap-2">
             
-            {/* Category Filter Toggle (All vs Raw Materials vs Finished Goods) */}
+            {/* Category Filter Toggle */}
             <div className="hidden lg:inline-flex rounded-lg border border-zinc-800 bg-[#121215] p-0.5 text-xs font-mono">
               {['ALL', 'RAW MATERIAL', 'FINISHED GOODS'].map((cat) => (
                 <button
@@ -120,7 +139,7 @@ export default function Header({
               ))}
             </div>
 
-            {/* View Mode Switcher (Table vs Grid Cards) */}
+            {/* View Mode Switcher */}
             <div className="hidden sm:inline-flex rounded-lg border border-zinc-800 bg-[#121215] p-0.5">
               <button
                 onClick={() => onToggleViewMode('table')}
@@ -223,20 +242,30 @@ export default function Header({
               className="w-full bg-[#121215] border border-zinc-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-mono"
             />
           </div>
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar text-[11px] font-mono">
-            {['ALL', 'RAW MATERIAL', 'FINISHED GOODS'].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => onCategoryFilterChange(cat)}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-bold whitespace-nowrap transition-colors border ${
-                  categoryFilter === cat
-                    ? 'bg-white text-black border-white'
-                    : 'bg-[#121215] text-zinc-400 border-zinc-800'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar text-[11px] font-mono">
+            <div className="flex items-center gap-1">
+              {['ALL', 'RAW MATERIAL', 'FINISHED GOODS'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => onCategoryFilterChange(cat)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap transition-colors border ${
+                    categoryFilter === cat
+                      ? 'bg-white text-black border-white'
+                      : 'bg-[#121215] text-zinc-400 border-zinc-800'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            {/* Mobile Cloud sync button */}
+            <button
+              onClick={onManualSync}
+              className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center gap-1"
+            >
+              <Cloud className={`w-2.5 h-2.5 ${isSyncing ? 'text-blue-400 animate-spin' : isPostgresConnected ? 'text-emerald-400' : 'text-zinc-400'}`} />
+              <span>SYNC</span>
+            </button>
           </div>
         </div>
       </div>

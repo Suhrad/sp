@@ -9,7 +9,11 @@ import {
   RotateCcw, 
   Check, 
   AlertCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Database,
+  Cloud,
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react';
 import { getStoredCredentials, saveStoredCredentials } from '@/lib/auth';
 import { StockItem } from '@/types/stock';
@@ -21,6 +25,8 @@ interface SettingsModalProps {
   onExportJSON: () => void;
   onImportJSON: (jsonStr: string) => void;
   items: StockItem[];
+  isPostgresConnected?: boolean;
+  onManualSync?: () => void;
 }
 
 export default function SettingsModal({
@@ -30,6 +36,8 @@ export default function SettingsModal({
   onExportJSON,
   onImportJSON,
   items,
+  isPostgresConnected,
+  onManualSync,
 }: SettingsModalProps) {
   const creds = getStoredCredentials();
 
@@ -83,17 +91,17 @@ export default function SettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-[#121215] border border-zinc-800 rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-lg bg-[#121215] border border-zinc-800 rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-start justify-between pb-3 border-b border-zinc-800">
           <div>
             <h2 className="text-base font-bold text-white font-sans">
-              System Settings & Credentials
+              System Settings & Cloud Database
             </h2>
             <p className="text-xs text-zinc-400 font-mono">
-              Manage security credentials and data backups
+              Manage credentials, real-time sync, and backups
             </p>
           </div>
           <button
@@ -117,9 +125,57 @@ export default function SettingsModal({
           </div>
         )}
 
+        {/* Cloud Sync & Database Status Panel */}
+        <div className="mt-4 p-3 bg-[#09090b] rounded-xl border border-zinc-800 font-mono space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-wider text-zinc-400 flex items-center gap-1.5 font-bold">
+              <Database className="w-3.5 h-3.5 text-white" />
+              <span>Multi-Device Cloud Sync</span>
+            </span>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+              isPostgresConnected
+                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+            }`}>
+              {isPostgresConnected ? 'POSTGRESQL ACTIVE' : 'CLOUD SERVER ACTIVE'}
+            </span>
+          </div>
+
+          <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">
+            Every bag adjustment and rate update syncs across all your devices (iPhone in godown, office PC, partner's phone).
+          </p>
+
+          <div className="pt-1 flex items-center gap-2">
+            {onManualSync && (
+              <button
+                type="button"
+                onClick={() => {
+                  onManualSync();
+                  setMsg({ text: 'Cloud inventory synced successfully.', error: false });
+                }}
+                className="px-2.5 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] text-zinc-300 hover:text-white flex items-center gap-1.5 font-bold"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Force Sync Now</span>
+              </button>
+            )}
+            <span className="text-[10px] text-zinc-500">
+              Auto-syncs on window focus & every 5s
+            </span>
+          </div>
+
+          {/* How to connect dedicated Supabase/Neon PostgreSQL */}
+          <div className="pt-2 border-t border-zinc-900 text-[10px] text-zinc-500 space-y-1">
+            <span className="text-zinc-400 font-bold block">Optional: Connect Dedicated Supabase / Neon</span>
+            <span>
+              Add <code className="text-white bg-zinc-900 px-1 py-0.5 rounded">DATABASE_URL</code> in Vercel Project Settings &rarr; Environment Variables to hook up your own Postgres database.
+            </span>
+          </div>
+        </div>
+
         {/* Change Password */}
         <form onSubmit={handlePasswordChange} className="mt-4 space-y-3 pb-4 border-b border-zinc-800">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block font-bold">
             Access Credentials
           </span>
 
@@ -186,7 +242,7 @@ export default function SettingsModal({
 
         {/* Backup & Export */}
         <div className="mt-4 space-y-2.5 pb-4 border-b border-zinc-800">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block font-bold">
             Data Backup & Export
           </span>
 
@@ -241,12 +297,12 @@ export default function SettingsModal({
             Factory Database Reset
           </span>
           <p className="text-[10px] text-zinc-500">
-            Resets all quantities back to the initial ₹48,63,000 factory stock sheet.
+            Resets all quantities back to the initial ₹72,01,325 factory stock sheet.
           </p>
           <button
             type="button"
             onClick={() => {
-              if (confirm('RESET all stock to the factory sheet values?')) {
+              if (confirm('RESET all stock to the factory sheet values across both cloud and local storage?')) {
                 onResetFactoryData();
                 onClose();
               }
