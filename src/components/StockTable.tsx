@@ -10,7 +10,8 @@ import {
   MoreHorizontal, 
   Trash2,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Pencil
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -20,6 +21,7 @@ interface StockTableProps {
   onOpenCustomAdjust: (item: StockItem, isPlus: boolean) => void;
   onOpenPriceUpdate: (item: StockItem) => void;
   onOpenTransfer: (item: StockItem) => void;
+  onOpenEditItem: (item: StockItem) => void;
   onDelete: (item: StockItem) => void;
 }
 
@@ -29,6 +31,7 @@ export default function StockTable({
   onOpenCustomAdjust,
   onOpenPriceUpdate,
   onOpenTransfer,
+  onOpenEditItem,
   onDelete,
 }: StockTableProps) {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -73,14 +76,19 @@ export default function StockTable({
                     isLow ? 'bg-red-950/10' : ''
                   }`}
                 >
-                  {/* Name */}
+                  {/* Name with inline edit trigger */}
                   <td className="py-2.5 px-4 font-sans font-bold text-white">
                     <div className="flex items-center gap-2">
-                      <span className="truncate max-w-[220px]" title={item.name}>
-                        {item.name}
-                      </span>
+                      <button
+                        onClick={() => onOpenEditItem(item)}
+                        className="text-left hover:underline truncate max-w-[220px] flex items-center gap-1.5 group/name"
+                        title="Click to edit item name and details"
+                      >
+                        <span className="truncate">{item.name}</span>
+                        <Pencil className="w-3 h-3 text-zinc-600 opacity-0 group-hover/name:opacity-100 transition-opacity flex-shrink-0" />
+                      </button>
                       {isLow && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-red-950 text-red-400 border border-red-800 flex items-center gap-1">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-red-950 text-red-400 border border-red-800 flex items-center gap-1 flex-shrink-0">
                           <AlertTriangle className="w-2.5 h-2.5" />
                           LOW
                         </span>
@@ -197,6 +205,16 @@ export default function StockTable({
                           onClick={() => setActiveMenuId(null)}
                         />
                         <div className="absolute right-2 top-8 z-50 w-44 bg-[#121215] border border-zinc-800 rounded-lg shadow-2xl py-1 text-xs text-left font-sans">
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              onOpenEditItem(item);
+                            }}
+                            className="w-full px-3 py-1.5 text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Edit Name & Details</span>
+                          </button>
                           <button
                             onClick={() => {
                               setActiveMenuId(null);

@@ -24,6 +24,7 @@ import AdjustModal from '@/components/AdjustModal';
 import PriceModal from '@/components/PriceModal';
 import TransferModal from '@/components/TransferModal';
 import AddItemModal from '@/components/AddItemModal';
+import EditItemModal from '@/components/EditItemModal';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import SettingsModal from '@/components/SettingsModal';
 
@@ -51,6 +52,7 @@ export default function DashboardPage() {
   const [adjustTarget, setAdjustTarget] = useState<{ item: StockItem; isPlus: boolean } | null>(null);
   const [priceTarget, setPriceTarget] = useState<StockItem | null>(null);
   const [transferTarget, setTransferTarget] = useState<StockItem | null>(null);
+  const [editTarget, setEditTarget] = useState<StockItem | null>(null);
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -64,7 +66,6 @@ export default function DashboardPage() {
       setAuthChecked(true);
       setItems(getStoredStock());
       setLogs(getStoredLogs());
-      // On mobile screen size, default to card view
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
         setViewMode('cards');
       }
@@ -256,6 +257,27 @@ export default function DashboardPage() {
 
     setLogs((prev) => [log, ...prev]);
     setTransferTarget(null);
+  };
+
+  const handleEditConfirm = (updatedItem: StockItem) => {
+    const oldItem = items.find((i) => i.id === updatedItem.id);
+    const nameChanged = oldItem && oldItem.name !== updatedItem.name;
+    const locationChanged = oldItem && oldItem.location !== updatedItem.location;
+
+    const newItems = items.map((i) => (i.id === updatedItem.id ? updatedItem : i));
+    updateItems(newItems);
+
+    const log = appendLog({
+      itemId: updatedItem.id,
+      itemName: updatedItem.name,
+      location: updatedItem.location,
+      type: 'CORRECTION',
+      reason: `Edited details${nameChanged ? ` (renamed from "${oldItem?.name}")` : ''}${locationChanged ? ` (moved from ${oldItem?.location})` : ''}`,
+      performedBy: session?.username || 'Admin',
+    });
+
+    setLogs((prev) => [log, ...prev]);
+    setEditTarget(null);
   };
 
   const handleAddItem = (data: Omit<StockItem, 'id' | 'updatedAt' | 'priceHistory'>) => {
@@ -501,6 +523,7 @@ export default function DashboardPage() {
             onOpenCustomAdjust={(item, isPlus) => setAdjustTarget({ item, isPlus })}
             onOpenPriceUpdate={(item) => setPriceTarget(item)}
             onOpenTransfer={(item) => setTransferTarget(item)}
+            onOpenEditItem={(item) => setEditTarget(item)}
             onDelete={handleDeleteItem}
           />
         ) : (
@@ -513,6 +536,7 @@ export default function DashboardPage() {
                 onOpenCustomAdjust={(item, isPlus) => setAdjustTarget({ item, isPlus })}
                 onOpenPriceUpdate={(item) => setPriceTarget(item)}
                 onOpenTransfer={(item) => setTransferTarget(item)}
+                onOpenEditItem={(item) => setEditTarget(item)}
                 onDelete={handleDeleteItem}
               />
             ))}
@@ -554,6 +578,14 @@ export default function DashboardPage() {
           item={transferTarget}
           onClose={() => setTransferTarget(null)}
           onConfirm={handleTransferConfirm}
+        />
+      )}
+
+      {editTarget && (
+        <EditItemModal
+          item={editTarget}
+          onClose={() => setEditTarget(null)}
+          onConfirm={handleEditConfirm}
         />
       )}
 

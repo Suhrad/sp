@@ -10,7 +10,8 @@ import {
   MoreHorizontal, 
   Trash2,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Pencil
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -20,6 +21,7 @@ interface StockCardProps {
   onOpenCustomAdjust: (item: StockItem, isPlus: boolean) => void;
   onOpenPriceUpdate: (item: StockItem) => void;
   onOpenTransfer: (item: StockItem) => void;
+  onOpenEditItem: (item: StockItem) => void;
   onDelete: (item: StockItem) => void;
 }
 
@@ -29,6 +31,7 @@ export default function StockCard({
   onOpenCustomAdjust,
   onOpenPriceUpdate,
   onOpenTransfer,
+  onOpenEditItem,
   onDelete,
 }: StockCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -65,9 +68,14 @@ export default function StockCard({
                 </span>
               )}
             </div>
-            <h3 className="font-bold text-white text-base leading-tight truncate font-sans" title={item.name}>
-              {item.name}
-            </h3>
+            <button
+              onClick={() => onOpenEditItem(item)}
+              className="font-bold text-white text-base leading-tight truncate font-sans text-left hover:underline flex items-center gap-1.5 group/cardname"
+              title="Click to edit item name and details"
+            >
+              <span className="truncate">{item.name}</span>
+              <Pencil className="w-3 h-3 text-zinc-600 opacity-0 group-hover/cardname:opacity-100 transition-opacity flex-shrink-0" />
+            </button>
           </div>
 
           {/* Menu */}
@@ -86,6 +94,16 @@ export default function StockCard({
                   onClick={() => setMenuOpen(false)}
                 />
                 <div className="absolute right-0 top-8 z-50 w-44 bg-[#121215] border border-zinc-800 rounded-lg shadow-2xl py-1 text-xs font-sans">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onOpenEditItem(item);
+                    }}
+                    className="w-full text-left px-3 py-2 text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit Name & Details</span>
+                  </button>
                   <button
                     onClick={() => {
                       setMenuOpen(false);
