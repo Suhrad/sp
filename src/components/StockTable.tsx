@@ -51,6 +51,7 @@ export default function StockTable({
           <thead>
             <tr className="border-b border-zinc-800 bg-[#09090b] text-zinc-400 font-mono uppercase text-[11px] tracking-wider">
               <th className="py-3 px-4 font-semibold">Material / Item</th>
+              <th className="py-3 px-4 font-semibold">Category</th>
               <th className="py-3 px-4 font-semibold">Location</th>
               <th className="py-3 px-4 font-semibold text-center">Bags Adjust (±)</th>
               <th className="py-3 px-4 font-semibold text-right">Net Weight</th>
@@ -81,7 +82,7 @@ export default function StockTable({
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => onOpenEditItem(item)}
-                        className="text-left hover:underline truncate max-w-[220px] flex items-center gap-1.5 group/name"
+                        className="text-left hover:underline truncate max-w-[210px] flex items-center gap-1.5 group/name"
                         title="Click to edit item name and details"
                       >
                         <span className="truncate">{item.name}</span>
@@ -94,6 +95,17 @@ export default function StockTable({
                         </span>
                       )}
                     </div>
+                  </td>
+
+                  {/* Category Tag */}
+                  <td className="py-2.5 px-4 text-zinc-400 text-[10px] whitespace-nowrap">
+                    <span className={`px-2 py-0.5 rounded border ${
+                      item.category === 'Finished Goods'
+                        ? 'bg-zinc-800 text-white border-zinc-600 font-bold'
+                        : 'bg-zinc-900/80 text-zinc-400 border-zinc-800'
+                    }`}>
+                      {item.category || 'Raw Material'}
+                    </span>
                   </td>
 
                   {/* Location */}

@@ -28,7 +28,7 @@ import EditItemModal from '@/components/EditItemModal';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import SettingsModal from '@/components/SettingsModal';
 
-import { ArrowUpDown, PackageOpen, Plus } from 'lucide-react';
+import { PackageOpen, Plus } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -44,6 +44,7 @@ export default function DashboardPage() {
   // View & Filters
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [lowStockOnly, setLowStockOnly] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<'name' | 'bags-desc' | 'bags-asc' | 'value-desc' | 'price-desc'>('value-desc');
@@ -228,6 +229,7 @@ export default function DashboardPage() {
         id: 'trans-' + Date.now(),
         name: item.name,
         location: targetLocation,
+        category: item.category,
         totalBags: transferBags,
         kg: transferKg,
         avgKgPerBag: item.avgKgPerBag,
@@ -333,7 +335,7 @@ export default function DashboardPage() {
 
   const handleResetFactory = () => {
     updateItems(INITIAL_STOCK);
-    localStorage.removeItem('polymer_stock_logs_v1');
+    localStorage.removeItem('polymer_stock_logs_v3');
     setLogs([]);
   };
 
@@ -381,20 +383,31 @@ export default function DashboardPage() {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      // Location filter
       if (selectedLocation !== 'All Locations' && item.location !== selectedLocation) {
         return false;
       }
+      // Category filter
+      if (categoryFilter === 'RAW MATERIAL' && item.category !== 'Raw Material') {
+        return false;
+      }
+      if (categoryFilter === 'FINISHED GOODS' && item.category !== 'Finished Goods') {
+        return false;
+      }
+      // Low stock filter
       if (lowStockOnly) {
         const isLow = item.isBulk
           ? item.kg <= item.lowStockThresholdKg
           : item.totalBags <= item.lowStockThresholdBags;
         if (!isLow) return false;
       }
+      // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
           item.name.toLowerCase().includes(q) ||
-          item.location.toLowerCase().includes(q)
+          item.location.toLowerCase().includes(q) ||
+          (item.category && item.category.toLowerCase().includes(q))
         );
       }
       return true;
@@ -414,7 +427,7 @@ export default function DashboardPage() {
           return 0;
       }
     });
-  }, [items, selectedLocation, lowStockOnly, searchQuery, sortBy]);
+  }, [items, selectedLocation, categoryFilter, lowStockOnly, searchQuery, sortBy]);
 
   if (!authChecked) {
     return (
@@ -435,6 +448,8 @@ export default function DashboardPage() {
         lowStockOnly={lowStockOnly}
         onToggleLowStock={() => setLowStockOnly(!lowStockOnly)}
         lowStockCount={summary.lowStockCount}
+        categoryFilter={categoryFilter}
+        onCategoryFilterChange={setCategoryFilter}
         onOpenAddItem={() => setAddItemOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -465,6 +480,11 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between gap-2 text-xs font-mono">
           <div className="text-zinc-500 flex items-center gap-2">
             <span>SHOWING <strong className="text-white">{filteredItems.length}</strong> LOTS</span>
+            {categoryFilter !== 'ALL' && (
+              <span className="text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                {categoryFilter}
+              </span>
+            )}
             {lowStockOnly && (
               <span className="text-red-400 bg-red-950 px-2 py-0.5 rounded border border-red-800 text-[10px] font-bold">
                 LOW STOCK FILTER

@@ -61,6 +61,13 @@ export default function StockCard({
               <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
                 {item.location}
               </span>
+              <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                item.category === 'Finished Goods'
+                  ? 'bg-zinc-800 text-white border-zinc-600 font-bold'
+                  : 'bg-zinc-900/60 text-zinc-500 border-zinc-800'
+              }`}>
+                {item.category || 'Raw Material'}
+              </span>
               {isLowStock && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-800">
                   <AlertTriangle className="w-2.5 h-2.5" />

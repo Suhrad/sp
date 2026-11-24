@@ -7,6 +7,8 @@ export type GodownLocation =
   | 'Godown 3'
   | 'Yard / Other';
 
+export type ItemCategory = 'Raw Material' | 'Finished Goods';
+
 export interface PriceHistoryRecord {
   id: string;
   price: number;
@@ -19,9 +21,10 @@ export interface StockItem {
   id: string;
   name: string;
   location: GodownLocation;
+  category?: ItemCategory;
   totalBags: number;
   kg: number;
-  avgKgPerBag: number; // usually 25, or 20, or 0 if bulk loose
+  avgKgPerBag: number; // usually 25, 50, 20, 55, or 0 if bulk loose
   currentPrice: number;
   previousPrice: number | null;
   lowStockThresholdBags: number; // default: 10 bags

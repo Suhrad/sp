@@ -1,8 +1,8 @@
 import { StockItem, StockLog, GodownLocation, StockSummary } from '@/types/stock';
 import { INITIAL_STOCK } from '@/data/initialStock';
 
-const STORAGE_KEY_STOCK = 'polymer_stock_items_v1';
-const STORAGE_KEY_LOGS = 'polymer_stock_logs_v1';
+const STORAGE_KEY_STOCK = 'polymer_stock_items_v3';
+const STORAGE_KEY_LOGS = 'polymer_stock_logs_v3';
 
 export function getStoredStock(): StockItem[] {
   if (typeof window === 'undefined') return INITIAL_STOCK;
@@ -12,7 +12,15 @@ export function getStoredStock(): StockItem[] {
       localStorage.setItem(STORAGE_KEY_STOCK, JSON.stringify(INITIAL_STOCK));
       return INITIAL_STOCK;
     }
-    return JSON.parse(data);
+    const items: StockItem[] = JSON.parse(data);
+    // Ensure all items have categories if missing
+    return items.map((item) => {
+      if (!item.category) {
+        const found = INITIAL_STOCK.find((i) => i.id === item.id);
+        item.category = found?.category || 'Raw Material';
+      }
+      return item;
+    });
   } catch (err) {
     console.error('Failed to read stock from localStorage', err);
     return INITIAL_STOCK;
@@ -42,7 +50,7 @@ export function getStoredLogs(): StockLog[] {
 export function saveStoredLogs(logs: StockLog[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs.slice(0, 500))); // keep latest 500 entries
+    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs.slice(0, 500)));
   } catch (err) {
     console.error('Failed to save logs to localStorage', err);
   }
@@ -89,13 +97,14 @@ export function calculateSummary(items: StockItem[]): StockSummary {
 }
 
 export function exportToCSV(items: StockItem[]): string {
-  const headers = ['Location', 'Name', 'Total Bags', "KG's", 'Price (₹/KG)', 'Total Value (₹)', 'Low Stock Status', 'Last Updated'];
+  const headers = ['Category', 'Location', 'Name', 'Total Bags', "KG's", 'Price (₹/KG)', 'Total Value (₹)', 'Low Stock Status', 'Last Updated'];
   const rows = items.map(item => {
     const isLow = item.isBulk
       ? item.kg <= item.lowStockThresholdKg
       : item.totalBags <= item.lowStockThresholdBags;
     const value = item.kg * item.currentPrice;
     return [
+      `"${item.category || 'Raw Material'}"`,
       `"${item.location}"`,
       `"${item.name.replace(/"/g, '""')}"`,
       item.totalBags,

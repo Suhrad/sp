@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { StockItem, GodownLocation } from '@/types/stock';
+import { StockItem, GodownLocation, ItemCategory } from '@/types/stock';
 import { GODOWN_LOCATIONS } from '@/data/initialStock';
 import { X, Plus } from 'lucide-react';
 
@@ -15,6 +15,7 @@ export default function AddItemModal({ onClose, onAdd }: AddItemModalProps) {
 
   const [name, setName] = useState('');
   const [location, setLocation] = useState<GodownLocation>('Godown 1');
+  const [category, setCategory] = useState<ItemCategory>('Raw Material');
   const [totalBags, setTotalBags] = useState<number | ''>(10);
   const [avgKgPerBag, setAvgKgPerBag] = useState<number>(25);
   const [price, setPrice] = useState<number | ''>(75);
@@ -33,6 +34,7 @@ export default function AddItemModal({ onClose, onAdd }: AddItemModalProps) {
     onAdd({
       name: name.trim(),
       location,
+      category,
       totalBags: isBulk ? 0 : (typeof totalBags === 'number' ? totalBags : 0),
       kg: calculatedKg,
       avgKgPerBag: isBulk ? 0 : avgKgPerBag,
@@ -55,7 +57,7 @@ export default function AddItemModal({ onClose, onAdd }: AddItemModalProps) {
               Register New Stock Lot
             </h2>
             <p className="text-xs text-zinc-400 font-mono">
-              Add granules, chips, powder or waste lot
+              Add raw material, chips, powder or finished goods
             </p>
           </div>
           <button
@@ -76,7 +78,7 @@ export default function AddItemModal({ onClose, onAdd }: AddItemModalProps) {
             <input
               type="text"
               required
-              placeholder="e.g. Poojan Blue Dana"
+              placeholder="e.g. Gop Dori - 16 TAR - 500g"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-white font-mono font-semibold"
@@ -84,22 +86,38 @@ export default function AddItemModal({ onClose, onAdd }: AddItemModalProps) {
             />
           </div>
 
-          {/* Location */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
-              Location *
-            </label>
-            <select
-              value={location}
-              onChange={(e) => setLocation(e.target.value as GodownLocation)}
-              className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono font-semibold"
-            >
-              {locations.map((loc) => (
-                <option key={loc} value={loc} className="bg-[#121215] text-white">
-                  {loc}
-                </option>
-              ))}
-            </select>
+          {/* Category & Location */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
+                Classification *
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as ItemCategory)}
+                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono font-semibold"
+              >
+                <option value="Raw Material" className="bg-[#121215]">Raw Material</option>
+                <option value="Finished Goods" className="bg-[#121215]">Finished Goods</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
+                Location *
+              </label>
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value as GodownLocation)}
+                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono font-semibold"
+              >
+                {locations.map((loc) => (
+                  <option key={loc} value={loc} className="bg-[#121215] text-white">
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Bulk Checkbox */}
@@ -142,9 +160,10 @@ export default function AddItemModal({ onClose, onAdd }: AddItemModalProps) {
                   className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-white"
                 >
                   <option value={25}>25 KG / bag</option>
+                  <option value={50}>50 KG / bag</option>
+                  <option value={55}>55 KG / bag</option>
                   <option value={20}>20 KG / bag</option>
                   <option value={30}>30 KG / bag</option>
-                  <option value={50}>50 KG / bag</option>
                 </select>
               </div>
             </div>

@@ -5,10 +5,9 @@ export interface UserSession {
   loginTime: string;
 }
 
-const AUTH_STORAGE_KEY = 'polymer_auth_session_v1';
-const CREDENTIALS_KEY = 'polymer_custom_credentials_v1';
+const AUTH_STORAGE_KEY = 'polymer_auth_session_v2';
+const CREDENTIALS_KEY = 'polymer_custom_credentials_v2';
 
-// Default initial credentials (user can change in Settings)
 export const DEFAULT_CREDENTIALS = {
   username: 'admin',
   password: 'stock@admin2026',
@@ -21,9 +20,7 @@ export function getStoredCredentials(): { username: string; password: string } {
     if (custom) {
       return JSON.parse(custom);
     }
-  } catch (e) {
-    // fallback
-  }
+  } catch (e) {}
   return DEFAULT_CREDENTIALS;
 }
 
@@ -44,29 +41,41 @@ export function getCurrentSession(): UserSession | null {
   }
 }
 
-export function setSession(username: string, name: string = 'Owner / Admin') {
-  if (typeof window === 'undefined') return;
-  const session: UserSession = {
-    username,
-    name,
-    isLoggedIn: true,
-    loginTime: new Date().toISOString(),
-  };
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-  // also set a cookie so next server/client can read if needed
-  document.cookie = `polymer_session=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+export async function serverLogin(username: string, password: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const customCredentials = getStoredCredentials();
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, customCredentials }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { success: false, error: data.error || 'Invalid credentials' };
+    }
+
+    if (typeof window !== 'undefined') {
+      const session: UserSession = {
+        username: data.user.username,
+        name: data.user.name,
+        isLoggedIn: true,
+        loginTime: new Date().toISOString(),
+      };
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: 'Network error or connection failed.' };
+  }
 }
 
-export function clearSession() {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-  document.cookie = 'polymer_session=; path=/; max-age=0; SameSite=Lax';
-}
-
-export function verifyLogin(user: string, pass: string): boolean {
-  const creds = getStoredCredentials();
-  return (
-    user.trim().toLowerCase() === creds.username.toLowerCase() &&
-    pass === creds.password
-  );
+export async function serverLogout(): Promise<void> {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch {}
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
 }

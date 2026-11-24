@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { clearSession, UserSession } from '@/lib/auth';
+import { serverLogout, UserSession } from '@/lib/auth';
 import { 
   Search, 
   AlertTriangle, 
@@ -23,6 +23,8 @@ interface HeaderProps {
   lowStockOnly: boolean;
   onToggleLowStock: () => void;
   lowStockCount: number;
+  categoryFilter: string;
+  onCategoryFilterChange: (cat: string) => void;
   onOpenAddItem: () => void;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
@@ -38,6 +40,8 @@ export default function Header({
   lowStockOnly,
   onToggleLowStock,
   lowStockCount,
+  categoryFilter,
+  onCategoryFilterChange,
   onOpenAddItem,
   onOpenHistory,
   onOpenSettings,
@@ -47,9 +51,9 @@ export default function Header({
 }: HeaderProps) {
   const router = useRouter();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm('Log out from Stock Platform?')) {
-      clearSession();
+      await serverLogout();
       router.replace('/login');
     }
   };
@@ -69,7 +73,7 @@ export default function Header({
                 STOCK OS
               </span>
               <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
-                POLYMER ERP
+                ENTERPRISE ERP
               </span>
             </div>
           </div>
@@ -80,7 +84,7 @@ export default function Header({
               <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search dana, chips, powder..."
+                placeholder="Search raw material, finished goods, godowns..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="w-full bg-[#121215] border border-zinc-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors font-mono"
@@ -99,6 +103,23 @@ export default function Header({
           {/* Controls & Actions */}
           <div className="flex items-center gap-2">
             
+            {/* Category Filter Toggle (All vs Raw Materials vs Finished Goods) */}
+            <div className="hidden lg:inline-flex rounded-lg border border-zinc-800 bg-[#121215] p-0.5 text-xs font-mono">
+              {['ALL', 'RAW MATERIAL', 'FINISHED GOODS'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => onCategoryFilterChange(cat)}
+                  className={`px-2 py-1 rounded text-[10px] font-bold transition-colors ${
+                    categoryFilter === cat
+                      ? 'bg-zinc-800 text-white'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
             {/* View Mode Switcher (Table vs Grid Cards) */}
             <div className="hidden sm:inline-flex rounded-lg border border-zinc-800 bg-[#121215] p-0.5">
               <button
@@ -190,8 +211,8 @@ export default function Header({
           </div>
         </div>
 
-        {/* Mobile search bar */}
-        <div className="pb-2.5 md:hidden">
+        {/* Mobile search bar and category bar */}
+        <div className="pb-2.5 md:hidden space-y-2">
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -201,6 +222,21 @@ export default function Header({
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-full bg-[#121215] border border-zinc-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-mono"
             />
+          </div>
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar text-[11px] font-mono">
+            {['ALL', 'RAW MATERIAL', 'FINISHED GOODS'].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => onCategoryFilterChange(cat)}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-bold whitespace-nowrap transition-colors border ${
+                  categoryFilter === cat
+                    ? 'bg-white text-black border-white'
+                    : 'bg-[#121215] text-zinc-400 border-zinc-800'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
         </div>
       </div>

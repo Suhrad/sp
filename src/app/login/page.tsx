@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentSession, setSession, verifyLogin, DEFAULT_CREDENTIALS } from '@/lib/auth';
-import { ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { getCurrentSession, serverLogin, DEFAULT_CREDENTIALS } from '@/lib/auth';
+import { ArrowRight, AlertCircle, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -32,16 +32,13 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    setTimeout(() => {
-      const isValid = verifyLogin(username, password);
-      if (isValid) {
-        setSession(username.trim());
-        router.replace('/');
-      } else {
-        setError('Invalid credentials. Check your Login ID and password.');
-        setLoading(false);
-      }
-    }, 250);
+    const result = await serverLogin(username, password);
+    if (result.success) {
+      router.replace('/');
+    } else {
+      setError(result.error || 'Invalid credentials. Access denied.');
+      setLoading(false);
+    }
   };
 
   const fillDefaultAdmin = () => {
@@ -52,7 +49,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#09090b] flex flex-col justify-between items-center px-4 py-8 relative">
-      {/* Subtle top subtle border highlight */}
+      {/* Top Header */}
       <div className="w-full max-w-7xl mx-auto flex justify-between items-center pt-2 pb-6 border-b border-zinc-900">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-white text-black flex items-center justify-center font-black text-xs rounded-md tracking-tighter">
@@ -63,8 +60,8 @@ export default function LoginPage() {
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
-          <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-          <span>SYSTEM ONLINE</span>
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>EDGE ENCRYPTED</span>
         </div>
       </div>
 
@@ -81,7 +78,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="mb-5 p-3 rounded-lg bg-zinc-900 border border-zinc-700/80 flex items-start gap-2.5 text-zinc-200 text-xs font-mono">
+            <div className="mb-5 p-3 rounded-lg bg-zinc-900 border border-red-800/80 flex items-start gap-2.5 text-zinc-200 text-xs font-mono">
               <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -170,7 +167,7 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-7xl mx-auto flex justify-between items-center text-[11px] text-zinc-600 font-mono pt-4 border-t border-zinc-900">
-        <span>SECURITY PROTOCOL 2.4</span>
+        <span>SECURITY PROTOCOL 2.4 &bull; HMAC SHA-256</span>
         <span>&copy; {new Date().getFullYear()} STOCK OS</span>
       </div>
     </div>

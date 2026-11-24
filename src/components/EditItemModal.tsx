@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { StockItem, GodownLocation } from '@/types/stock';
+import { StockItem, GodownLocation, ItemCategory } from '@/types/stock';
 import { GODOWN_LOCATIONS } from '@/data/initialStock';
 import { X, Check, Edit3 } from 'lucide-react';
 
@@ -20,6 +20,7 @@ export default function EditItemModal({
 
   const [name, setName] = useState(item.name);
   const [location, setLocation] = useState<GodownLocation>(item.location);
+  const [category, setCategory] = useState<ItemCategory>(item.category || 'Raw Material');
   const [totalBags, setTotalBags] = useState<number | ''>(item.totalBags);
   const [avgKgPerBag, setAvgKgPerBag] = useState<number>(item.avgKgPerBag || 25);
   const [kg, setKg] = useState<number | ''>(item.kg);
@@ -28,7 +29,6 @@ export default function EditItemModal({
   const [lowStockThresholdKg, setLowStockThresholdKg] = useState<number>(item.lowStockThresholdKg || 250);
   const [isBulk, setIsBulk] = useState(Boolean(item.isBulk));
 
-  // Auto-sync KG when bags change if not bulk
   const handleBagsChange = (val: string) => {
     if (val === '') {
       setTotalBags('');
@@ -62,6 +62,7 @@ export default function EditItemModal({
       ...item,
       name: name.trim(),
       location,
+      category,
       totalBags: numBags,
       kg: numKg,
       avgKgPerBag: isBulk ? 0 : avgKgPerBag,
@@ -101,7 +102,7 @@ export default function EditItemModal({
                 Edit Material Details
               </h2>
               <p className="text-xs text-zinc-400 font-mono">
-                Update name, location, bag weights, and thresholds
+                Update name, classification, bag weights, and thresholds
               </p>
             </div>
           </div>
@@ -125,28 +126,44 @@ export default function EditItemModal({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. PP Mamri, Dharit Yellow Waste Dana"
+              placeholder="e.g. PP Mamri, Gop Dori, Semi Yarn"
               className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono font-bold"
               autoFocus
             />
           </div>
 
-          {/* Plant / Godown Location */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
-              Godown / Plant Location
-            </label>
-            <select
-              value={location}
-              onChange={(e) => setLocation(e.target.value as GodownLocation)}
-              className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono font-semibold"
-            >
-              {locations.map((loc) => (
-                <option key={loc} value={loc} className="bg-[#121215] text-white">
-                  {loc}
-                </option>
-              ))}
-            </select>
+          {/* Category & Location */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
+                Classification
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as ItemCategory)}
+                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono font-semibold"
+              >
+                <option value="Raw Material" className="bg-[#121215]">Raw Material</option>
+                <option value="Finished Goods" className="bg-[#121215]">Finished Goods</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
+                Godown / Plant Location
+              </label>
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value as GodownLocation)}
+                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono font-semibold"
+              >
+                {locations.map((loc) => (
+                  <option key={loc} value={loc} className="bg-[#121215] text-white">
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Bulk Checkbox */}
@@ -189,9 +206,10 @@ export default function EditItemModal({
                   className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:border-white"
                 >
                   <option value={25}>25 KG</option>
+                  <option value={50}>50 KG</option>
+                  <option value={55}>55 KG</option>
                   <option value={20}>20 KG</option>
                   <option value={30}>30 KG</option>
-                  <option value={50}>50 KG</option>
                 </select>
               </div>
 
@@ -223,7 +241,7 @@ export default function EditItemModal({
             </div>
           )}
 
-          {/* Rate / Price & Threshold */}
+          {/* Rate & Threshold */}
           <div className="grid grid-cols-2 gap-2.5">
             <div>
               <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
