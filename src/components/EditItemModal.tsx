@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { StockItem, GodownLocation, ItemCategory } from '@/types/stock';
 import { GODOWN_LOCATIONS } from '@/data/initialStock';
-import { X, Check, Edit3 } from 'lucide-react';
+import { X, Check, Edit3, Camera } from 'lucide-react';
+import { compressImageFile } from '@/lib/imageUtils';
 
 interface EditItemModalProps {
   item: StockItem;
@@ -28,6 +29,23 @@ export default function EditItemModal({
   const [lowStockThresholdBags, setLowStockThresholdBags] = useState<number>(item.lowStockThresholdBags || 10);
   const [lowStockThresholdKg, setLowStockThresholdKg] = useState<number>(item.lowStockThresholdKg || 250);
   const [isBulk, setIsBulk] = useState(Boolean(item.isBulk));
+  const [imageUrl, setImageUrl] = useState<string>(item.imageUrl || '');
+  const [isCompressingImage, setIsCompressingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsCompressingImage(true);
+      const compressed = await compressImageFile(file);
+      setImageUrl(compressed);
+    } catch (err: any) {
+      alert(err.message || 'Failed to process image');
+    } finally {
+      setIsCompressingImage(false);
+    }
+  };
 
   const handleBagsChange = (val: string) => {
     if (val === '') {
@@ -71,6 +89,7 @@ export default function EditItemModal({
       lowStockThresholdBags,
       lowStockThresholdKg,
       isBulk,
+      imageUrl: imageUrl || undefined,
       updatedAt: new Date().toISOString(),
       priceHistory: priceChanged ? [
         {
@@ -278,6 +297,74 @@ export default function EditItemModal({
                 className="w-full bg-[#09090b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-white tabular-nums"
               />
             </div>
+          </div>
+
+          {/* Optional Material Photo */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400">
+                Material Photo (Optional)
+              </label>
+              {imageUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageUrl('');
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  className="text-[10px] font-mono text-red-400 hover:text-red-300"
+                >
+                  Remove photo
+                </button>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageFileChange}
+              className="hidden"
+            />
+
+            {imageUrl ? (
+              <div className="relative w-full h-32 bg-[#09090b] border border-zinc-800 rounded-lg overflow-hidden flex items-center justify-center group">
+                <img
+                  src={imageUrl}
+                  alt="Material preview"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1 bg-white text-black text-xs font-mono font-bold rounded"
+                  >
+                    Change
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageUrl('');
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="px-2.5 py-1 bg-red-600 text-white text-xs font-mono font-bold rounded"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isCompressingImage}
+                className="w-full py-2.5 px-3 bg-[#09090b] border border-dashed border-zinc-800 hover:border-zinc-600 rounded-lg text-xs font-mono text-zinc-400 hover:text-white transition-all flex items-center justify-center gap-2"
+              >
+                <Camera className="w-4 h-4 text-zinc-500" />
+                <span>{isCompressingImage ? 'Optimizing photo...' : '+ Upload / Take Material Photo'}</span>
+              </button>
+            )}
           </div>
 
           {/* Live Valuation */}

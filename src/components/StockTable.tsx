@@ -23,6 +23,7 @@ interface StockTableProps {
   onOpenTransfer: (item: StockItem) => void;
   onOpenEditItem: (item: StockItem) => void;
   onDelete: (item: StockItem) => void;
+  onPreviewImage?: (url: string, title: string) => void;
 }
 
 export default function StockTable({
@@ -33,6 +34,7 @@ export default function StockTable({
   onOpenTransfer,
   onOpenEditItem,
   onDelete,
+  onPreviewImage,
 }: StockTableProps) {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
@@ -80,6 +82,16 @@ export default function StockTable({
                   {/* Name with inline edit trigger */}
                   <td className="py-2.5 px-4 font-sans font-bold text-white">
                     <div className="flex items-center gap-2">
+                      {item.imageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => onPreviewImage?.(item.imageUrl!, item.name)}
+                          className="w-7 h-7 rounded-md overflow-hidden border border-zinc-700 bg-zinc-900 flex-shrink-0 hover:scale-110 hover:border-white transition-all shadow-sm"
+                          title="Click to view material photo"
+                        >
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        </button>
+                      )}
                       <button
                         onClick={() => onOpenEditItem(item)}
                         className="text-left hover:underline truncate max-w-[260px] sm:max-w-md lg:max-w-xl xl:max-w-none flex items-center gap-1.5 group/name"

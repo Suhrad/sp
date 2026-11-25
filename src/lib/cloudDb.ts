@@ -184,9 +184,12 @@ export async function initializeDatabase(customPool?: Pool): Promise<boolean> {
           low_stock_threshold_bags NUMERIC DEFAULT 10,
           low_stock_threshold_kg NUMERIC DEFAULT 250,
           is_bulk BOOLEAN DEFAULT FALSE,
+          image_url TEXT,
           updated_at TIMESTAMPTZ DEFAULT NOW(),
           price_history JSONB DEFAULT '[]'::jsonb
         );
+
+        ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 
         CREATE TABLE IF NOT EXISTS inventory_logs (
           id TEXT PRIMARY KEY,
@@ -304,6 +307,7 @@ export async function getCloudItems(): Promise<StockItem[]> {
           lowStockThresholdBags: parseFloat(row.low_stock_threshold_bags) || 10,
           lowStockThresholdKg: parseFloat(row.low_stock_threshold_kg) || 250,
           isBulk: Boolean(row.is_bulk),
+          imageUrl: row.image_url || undefined,
           updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
           priceHistory: Array.isArray(row.price_history) ? row.price_history : [],
         }));
@@ -332,6 +336,7 @@ export async function getCloudItems(): Promise<StockItem[]> {
           lowStockThresholdBags: parseFloat(row.low_stock_threshold_bags) || 10,
           lowStockThresholdKg: parseFloat(row.low_stock_threshold_kg) || 250,
           isBulk: Boolean(row.is_bulk),
+          imageUrl: row.image_url || undefined,
           updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
           priceHistory: Array.isArray(row.price_history) ? row.price_history : [],
         }));
@@ -380,6 +385,7 @@ export async function upsertCloudItem(item: StockItem): Promise<void> {
         low_stock_threshold_bags: item.lowStockThresholdBags,
         low_stock_threshold_kg: item.lowStockThresholdKg,
         is_bulk: Boolean(item.isBulk),
+        image_url: item.imageUrl || null,
         updated_at: item.updatedAt || new Date().toISOString(),
         price_history: item.priceHistory || [],
       });
@@ -397,8 +403,8 @@ export async function upsertCloudItem(item: StockItem): Promise<void> {
       `INSERT INTO inventory_items (
         id, name, location, category, total_bags, kg, avg_kg_per_bag,
         current_price, previous_price, low_stock_threshold_bags,
-        low_stock_threshold_kg, is_bulk, updated_at, price_history
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        low_stock_threshold_kg, is_bulk, updated_at, price_history, image_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
         location = EXCLUDED.location,
@@ -412,7 +418,8 @@ export async function upsertCloudItem(item: StockItem): Promise<void> {
         low_stock_threshold_kg = EXCLUDED.low_stock_threshold_kg,
         is_bulk = EXCLUDED.is_bulk,
         updated_at = EXCLUDED.updated_at,
-        price_history = EXCLUDED.price_history`,
+        price_history = EXCLUDED.price_history,
+        image_url = EXCLUDED.image_url`,
       [
         item.id,
         item.name,
@@ -428,6 +435,7 @@ export async function upsertCloudItem(item: StockItem): Promise<void> {
         Boolean(item.isBulk),
         item.updatedAt,
         JSON.stringify(item.priceHistory || []),
+        item.imageUrl || null,
       ]
     );
   } catch (err: any) {

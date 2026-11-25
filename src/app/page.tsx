@@ -39,6 +39,7 @@ import HistoryDrawer from '@/components/HistoryDrawer';
 import SettingsModal from '@/components/SettingsModal';
 import PlantMixingView from '@/components/PlantMixingView';
 import AddBatchModal from '@/components/AddBatchModal';
+import ImageLightboxModal from '@/components/ImageLightboxModal';
 
 import { PackageOpen, Plus } from 'lucide-react';
 
@@ -80,6 +81,7 @@ export default function DashboardPage() {
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   // Sync with Cloud Database
   const syncWithCloud = useCallback(async () => {
@@ -693,6 +695,7 @@ export default function DashboardPage() {
                   onOpenTransfer={(item) => setTransferTarget(item)}
                   onOpenEditItem={(item) => setEditTarget(item)}
                   onDelete={handleDeleteItem}
+                  onPreviewImage={(url, title) => setPreviewImage({ url, title })}
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -706,6 +709,7 @@ export default function DashboardPage() {
                       onOpenTransfer={(item) => setTransferTarget(item)}
                       onOpenEditItem={(item) => setEditTarget(item)}
                       onDelete={handleDeleteItem}
+                      onPreviewImage={(url, title) => setPreviewImage({ url, title })}
                     />
                   ))}
                 </div>
@@ -724,6 +728,7 @@ export default function DashboardPage() {
                   onOpenTransfer={(item) => setTransferTarget(item)}
                   onOpenEditItem={(item) => setEditTarget(item)}
                   onDelete={handleDeleteItem}
+                  onPreviewImage={(url, title) => setPreviewImage({ url, title })}
                 />
               ))}
             </div>
@@ -822,6 +827,14 @@ export default function DashboardPage() {
           items={items}
           isPostgresConnected={isPostgresConnected}
           onManualSync={syncWithCloud}
+        />
+      )}
+
+      {previewImage && (
+        <ImageLightboxModal
+          imageUrl={previewImage.url}
+          title={previewImage.title}
+          onClose={() => setPreviewImage(null)}
         />
       )}
     </div>

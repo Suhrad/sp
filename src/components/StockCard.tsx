@@ -23,6 +23,7 @@ interface StockCardProps {
   onOpenTransfer: (item: StockItem) => void;
   onOpenEditItem: (item: StockItem) => void;
   onDelete: (item: StockItem) => void;
+  onPreviewImage?: (url: string, title: string) => void;
 }
 
 export default function StockCard({
@@ -33,6 +34,7 @@ export default function StockCard({
   onOpenTransfer,
   onOpenEditItem,
   onDelete,
+  onPreviewImage,
 }: StockCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -56,6 +58,16 @@ export default function StockCard({
       <div className="p-3 sm:p-4 pb-2.5 sm:pb-3">
         {/* Top Header */}
         <div className="flex items-start justify-between gap-2 mb-2">
+          {item.imageUrl && (
+            <button
+              type="button"
+              onClick={() => onPreviewImage?.(item.imageUrl!, item.name)}
+              className="w-11 h-11 rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900 flex-shrink-0 hover:scale-105 transition-all shadow-sm"
+              title="Click to view material photo"
+            >
+              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+            </button>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap mb-1">
               <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">

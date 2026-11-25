@@ -32,6 +32,7 @@ export interface StockItem {
   lowStockThresholdBags: number; // default: 10 bags
   lowStockThresholdKg: number; // default: 250 kg
   isBulk?: boolean; // For items with no bags (e.g. WASTE, BOBIN YARN)
+  imageUrl?: string; // Optional image URL or base64 data URL
   updatedAt: string;
   priceHistory: PriceHistoryRecord[];
 }
