@@ -694,6 +694,7 @@ export default function DashboardPage() {
         <AddItemModal
           onClose={() => setAddItemOpen(false)}
           onAdd={handleAddItem}
+          existingItems={items}
         />
       )}
 
