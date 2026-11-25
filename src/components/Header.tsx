@@ -87,18 +87,18 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-800">
-      <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 gap-3">
+    <header className="sticky top-0 z-30 bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-800 overflow-x-hidden">
+      <div className="w-full max-w-[1920px] mx-auto px-2.5 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-13 sm:h-14 gap-2 sm:gap-3">
           
           {/* Brand & Cloud Status */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white text-black font-black text-sm flex items-center justify-center rounded-lg tracking-tight">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white text-black font-black text-xs sm:text-sm flex items-center justify-center rounded-lg tracking-tight flex-shrink-0">
               OS
             </div>
-            <div className="leading-none">
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm tracking-tight text-white block">
+            <div className="leading-none min-w-0">
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <span className="font-bold text-xs sm:text-sm tracking-tight text-white block truncate">
                   STOCK OS
                 </span>
                 {/* Cloud Live Badge */}
@@ -111,7 +111,7 @@ export default function Header({
                   <span>{isPostgresConnected ? 'POSTGRES' : 'CLOUD SYNC'}</span>
                 </button>
               </div>
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mt-0.5">
+              <span className="text-[9px] sm:text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mt-0.5 truncate">
                 ENTERPRISE ERP
               </span>
             </div>
@@ -140,7 +140,7 @@ export default function Header({
           </div>
 
           {/* Controls & Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             
             {/* Category Filter Toggle */}
             <div className="hidden lg:inline-flex rounded-lg border border-zinc-800 bg-[#121215] p-0.5 text-xs font-mono">
@@ -190,14 +190,14 @@ export default function Header({
             {/* Low stock filter toggle */}
             <button
               onClick={onToggleLowStock}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors border ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors border ${
                 lowStockOnly
                   ? 'bg-red-950/40 text-red-300 border-red-700/60 font-bold'
                   : 'bg-[#121215] text-zinc-400 border-zinc-800 hover:text-white'
               }`}
             >
               <AlertTriangle className={`w-3.5 h-3.5 ${lowStockOnly ? 'text-red-400' : 'text-zinc-500'}`} />
-              <span className="hidden xs:inline">Low Stock</span>
+              <span className="hidden sm:inline">Low Stock</span>
               <span className="px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 text-[10px] font-bold">
                 {lowStockCount}
               </span>
@@ -206,19 +206,19 @@ export default function Header({
             {/* Add stock lot */}
             <button
               onClick={onOpenAddItem}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-zinc-200 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-zinc-200 transition-colors shadow-sm whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Add Lot</span>
+              <span className="hidden xs:inline">Add Lot</span>
             </button>
 
             {/* Audit Log */}
             <button
               onClick={onOpenHistory}
-              className="p-1.5 rounded-lg bg-[#121215] border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg bg-[#121215] border border-zinc-800 text-zinc-400 hover:text-white transition-colors hidden xs:block"
               title="Audit Logs"
             >
-              <Clock className="w-4 h-4" />
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             {/* CSV export */}
@@ -245,7 +245,7 @@ export default function Header({
               className="p-1.5 rounded-lg bg-[#121215] border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
               title="Settings & Credentials"
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             {/* Logout */}
@@ -254,7 +254,7 @@ export default function Header({
               className="p-1.5 rounded-lg bg-[#121215] border border-zinc-800 text-zinc-500 hover:text-red-400 transition-colors"
               title="Sign Out"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
