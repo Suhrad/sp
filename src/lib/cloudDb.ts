@@ -1,4 +1,4 @@
-import { StockItem, StockLog } from '@/types/stock';
+import { StockItem, StockLog, GodownLocation } from '@/types/stock';
 import { INITIAL_STOCK } from '@/data/initialStock';
 import { Pool } from 'pg';
 import fs from 'fs';
@@ -190,6 +190,16 @@ export async function initializeDatabase(customPool?: Pool): Promise<boolean> {
           );
         }
       }
+
+      // Migrate any previously seeded outside godown items to Outside Godown 1 & 2
+      await client.query(`
+        UPDATE inventory_items SET location = 'Outside Godown 1'
+        WHERE id IN ('g1-fg-1', 'g1-fg-2', 'g1-rm-1', 'g1-rm-2', 'g1-rm-3', 'g1-fg-3') AND location = 'Godown 1';
+
+        UPDATE inventory_items SET location = 'Outside Godown 2'
+        WHERE id IN ('g3-fg-1', 'g3-fg-2', 'g3-fg-3', 'g3-rm-1', 'g3-rm-2', 'g3-rm-3', 'g3-rm-4', 'g3-rm-5', 'g3-rm-6') AND location = 'Godown 3';
+      `);
+
       return true;
     } finally {
       client.release();
@@ -292,7 +302,15 @@ export async function setPostgresConnection(url: string | null): Promise<{
 export async function getCloudItems(): Promise<StockItem[]> {
   const p = getPool();
   if (!p) {
-    return inMemoryItems;
+    return inMemoryItems.map(item => {
+      if ((item.id.startsWith('g1-fg-') || item.id.startsWith('g1-rm-')) && item.location === 'Godown 1') {
+        return { ...item, location: 'Outside Godown 1' as GodownLocation };
+      }
+      if ((item.id.startsWith('g3-fg-') || item.id.startsWith('g3-rm-')) && item.location === 'Godown 3') {
+        return { ...item, location: 'Outside Godown 2' as GodownLocation };
+      }
+      return item;
+    });
   }
 
   try {

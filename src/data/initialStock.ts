@@ -732,11 +732,11 @@ export const INITIAL_STOCK: StockItem[] = [
     priceHistory: [{ id: 'ph-g1-22', price: 100, changedAt: DEFAULT_DATE, changedBy: 'Initial Setup' }]
   },
 
-  // 4B. Godown 1 - NEW RAW MATERIALS & FINISHED GOODS
+  // 4B. Outside Godown 1 - RAW MATERIALS & FINISHED GOODS
   {
     id: 'g1-fg-1',
     name: 'Gop Dori - 16 TAR - 500g',
-    location: 'Godown 1',
+    location: 'Outside Godown 1',
     category: 'Finished Goods',
     totalBags: 50,
     kg: 2500,
@@ -751,7 +751,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g1-fg-2',
     name: 'Gop Dori - 16 TAR - 200g',
-    location: 'Godown 1',
+    location: 'Outside Godown 1',
     category: 'Finished Goods',
     totalBags: 111,
     kg: 5550,
@@ -766,7 +766,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g1-rm-1',
     name: 'Pareshbhai HD',
-    location: 'Godown 1',
+    location: 'Outside Godown 1',
     category: 'Raw Material',
     totalBags: 84,
     kg: 2100,
@@ -781,7 +781,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g1-rm-2',
     name: 'Black Chips ( Delhi )',
-    location: 'Godown 1',
+    location: 'Outside Godown 1',
     category: 'Raw Material',
     totalBags: 22,
     kg: 550,
@@ -796,7 +796,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g1-rm-3',
     name: 'HD Vartej - White Chips',
-    location: 'Godown 1',
+    location: 'Outside Godown 1',
     category: 'Raw Material',
     totalBags: 13,
     kg: 325,
@@ -811,7 +811,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g1-fg-3',
     name: 'Semi Yarn',
-    location: 'Godown 1',
+    location: 'Outside Godown 1',
     category: 'Finished Goods',
     totalBags: 15,
     kg: 825,
@@ -1278,11 +1278,11 @@ export const INITIAL_STOCK: StockItem[] = [
     priceHistory: [{ id: 'ph-g3-18', price: 75, changedAt: DEFAULT_DATE, changedBy: 'Initial Setup' }]
   },
 
-  // 6B. Godown 3 - NEW RAW MATERIALS & FINISHED GOODS
+  // 6B. Outside Godown 2 - RAW MATERIALS & FINISHED GOODS
   {
     id: 'g3-fg-1',
     name: 'Gop Dori - 24 TAR - 500g',
-    location: 'Godown 3',
+    location: 'Outside Godown 2',
     category: 'Finished Goods',
     totalBags: 15,
     kg: 750,
@@ -1297,7 +1297,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g3-fg-2',
     name: 'Gop Dori - 16 TAR - 500g',
-    location: 'Godown 3',
+    location: 'Outside Godown 2',
     category: 'Finished Goods',
     totalBags: 22,
     kg: 1100,
@@ -1312,7 +1312,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g3-fg-3',
     name: 'Semi Yarn',
-    location: 'Godown 3',
+    location: 'Outside Godown 2',
     category: 'Finished Goods',
     totalBags: 47,
     kg: 2585,
@@ -1327,7 +1327,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g3-rm-1',
     name: 'HD Powder ( Delhi )',
-    location: 'Godown 3',
+    location: 'Outside Godown 2',
     category: 'Raw Material',
     totalBags: 75,
     kg: 1875,
@@ -1342,7 +1342,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g3-rm-2',
     name: 'Pareshbhai Powder',
-    location: 'Godown 3',
+    location: 'Outside Godown 2',
     category: 'Raw Material',
     totalBags: 35,
     kg: 700,
@@ -1357,7 +1357,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g3-rm-3',
     name: 'Unnati Bo PP',
-    location: 'Godown 3',
+    location: 'Outside Godown 2',
     category: 'Raw Material',
     totalBags: 97,
     kg: 2425,
@@ -1372,7 +1372,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g3-rm-4',
     name: 'Pareshbhai PP',
-    location: 'Godown 3',
+    location: 'Outside Godown 2',
     category: 'Raw Material',
     totalBags: 69,
     kg: 1725,
@@ -1387,7 +1387,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g3-rm-5',
     name: 'Mukeshbhai Dull PP',
-    location: 'Godown 3',
+    location: 'Outside Godown 2',
     category: 'Raw Material',
     totalBags: 111,
     kg: 2775,
@@ -1402,7 +1402,7 @@ export const INITIAL_STOCK: StockItem[] = [
   {
     id: 'g3-rm-6',
     name: 'Blue Waste Grinding',
-    location: 'Godown 3',
+    location: 'Outside Godown 2',
     category: 'Raw Material',
     totalBags: 14,
     kg: 350,
@@ -1455,6 +1455,8 @@ export const GODOWN_LOCATIONS = [
   'Godown 1',
   'Godown 2',
   'Godown 3',
+  'Outside Godown 1',
+  'Outside Godown 2',
   'Bhayabhai Godown',
   'Ramu Plant',
   'Single Plant',

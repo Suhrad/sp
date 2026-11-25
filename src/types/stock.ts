@@ -5,6 +5,8 @@ export type GodownLocation =
   | 'Godown 1'
   | 'Godown 2'
   | 'Godown 3'
+  | 'Outside Godown 1'
+  | 'Outside Godown 2'
   | 'Yard / Other';
 
 export type ItemCategory = 'Raw Material' | 'Finished Goods';

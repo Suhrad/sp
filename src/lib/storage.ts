@@ -18,6 +18,11 @@ export function getStoredStock(): StockItem[] {
         const found = INITIAL_STOCK.find((i) => i.id === item.id);
         item.category = found?.category || 'Raw Material';
       }
+      if (item.id.startsWith('g1-fg-') || item.id.startsWith('g1-rm-')) {
+        item.location = 'Outside Godown 1';
+      } else if (item.id.startsWith('g3-fg-') || item.id.startsWith('g3-rm-')) {
+        item.location = 'Outside Godown 2';
+      }
       return item;
     });
   } catch (err) {
