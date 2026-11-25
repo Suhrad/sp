@@ -617,31 +617,54 @@ export default function DashboardPage() {
               </button>
             )}
           </div>
-        ) : viewMode === 'table' ? (
-          <StockTable
-            items={filteredItems}
-            onQuickAdjust={handleQuickAdjust}
-            onOpenCustomAdjust={(item, isPlus) => setAdjustTarget({ item, isPlus })}
-            onOpenPriceUpdate={(item) => setPriceTarget(item)}
-            onOpenTransfer={(item) => setTransferTarget(item)}
-            onOpenEditItem={(item) => setEditTarget(item)}
-            onDelete={handleDeleteItem}
-          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredItems.map((item) => (
-              <StockCard
-                key={item.id}
-                item={item}
-                onQuickAdjust={handleQuickAdjust}
-                onOpenCustomAdjust={(item, isPlus) => setAdjustTarget({ item, isPlus })}
-                onOpenPriceUpdate={(item) => setPriceTarget(item)}
-                onOpenTransfer={(item) => setTransferTarget(item)}
-                onOpenEditItem={(item) => setEditTarget(item)}
-                onDelete={handleDeleteItem}
-              />
-            ))}
-          </div>
+          <>
+            {/* Desktop View (Widescreen Table or Grid Cards) */}
+            <div className="hidden md:block">
+              {viewMode === 'table' ? (
+                <StockTable
+                  items={filteredItems}
+                  onQuickAdjust={handleQuickAdjust}
+                  onOpenCustomAdjust={(item, isPlus) => setAdjustTarget({ item, isPlus })}
+                  onOpenPriceUpdate={(item) => setPriceTarget(item)}
+                  onOpenTransfer={(item) => setTransferTarget(item)}
+                  onOpenEditItem={(item) => setEditTarget(item)}
+                  onDelete={handleDeleteItem}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {filteredItems.map((item) => (
+                    <StockCard
+                      key={item.id}
+                      item={item}
+                      onQuickAdjust={handleQuickAdjust}
+                      onOpenCustomAdjust={(item, isPlus) => setAdjustTarget({ item, isPlus })}
+                      onOpenPriceUpdate={(item) => setPriceTarget(item)}
+                      onOpenTransfer={(item) => setTransferTarget(item)}
+                      onOpenEditItem={(item) => setEditTarget(item)}
+                      onDelete={handleDeleteItem}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Mobile View (100% Zero Horizontal Scroll - Dedicated Touch Cards) */}
+            <div className="block md:hidden space-y-2.5">
+              {filteredItems.map((item) => (
+                <StockCard
+                  key={item.id}
+                  item={item}
+                  onQuickAdjust={handleQuickAdjust}
+                  onOpenCustomAdjust={(item, isPlus) => setAdjustTarget({ item, isPlus })}
+                  onOpenPriceUpdate={(item) => setPriceTarget(item)}
+                  onOpenTransfer={(item) => setTransferTarget(item)}
+                  onOpenEditItem={(item) => setEditTarget(item)}
+                  onDelete={handleDeleteItem}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
 

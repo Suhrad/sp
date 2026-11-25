@@ -53,7 +53,7 @@ export default function StockCard({
           : 'border-zinc-800 hover:border-zinc-700'
       }`}
     >
-      <div className="p-4 pb-3">
+      <div className="p-3 sm:p-4 pb-2.5 sm:pb-3">
         {/* Top Header */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
