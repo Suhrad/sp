@@ -52,11 +52,13 @@ export default function LoginPage() {
       {/* Top Header */}
       <div className="w-full max-w-7xl mx-auto flex justify-between items-center pt-2 pb-6 border-b border-zinc-900">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-white text-black flex items-center justify-center font-black text-xs rounded-md tracking-tighter">
-            OS
-          </div>
-          <span className="text-xs font-mono uppercase tracking-widest text-zinc-400 font-bold">
-            STOCK PLATFORM &bull; ENTERPRISE
+          <img
+            src="/logo.png"
+            alt="SP Stock Logo"
+            className="w-8 h-8 rounded-full bg-white object-contain p-0.5 border border-zinc-700 shadow-sm"
+          />
+          <span className="text-xs font-mono uppercase tracking-widest text-zinc-300 font-bold">
+            SP STOCK &bull; ENTERPRISE
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
@@ -68,13 +70,20 @@ export default function LoginPage() {
       {/* Main Login Card */}
       <div className="w-full max-w-sm my-auto">
         <div className="bg-[#121215] border border-zinc-800/80 rounded-2xl p-7 shadow-2xl">
-          <div className="mb-6">
-            <h1 className="text-xl font-bold text-white tracking-tight">
-              Sign In
-            </h1>
-            <p className="text-xs text-zinc-400 mt-1">
-              Authorized access to polymer godown inventory
-            </p>
+          <div className="mb-6 flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="SP Stock Logo"
+              className="w-12 h-12 rounded-full bg-white object-contain p-0.5 border border-zinc-700 shadow-md flex-shrink-0"
+            />
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight font-sans">
+                SP Stock
+              </h1>
+              <p className="text-xs text-zinc-400 mt-0.5 font-mono">
+                Since 1989 &bull; Polymer Operations
+              </p>
+            </div>
           </div>
 
           {error && (
@@ -168,7 +177,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-7xl mx-auto flex justify-between items-center text-[11px] text-zinc-600 font-mono pt-4 border-t border-zinc-900">
         <span>SECURITY PROTOCOL 2.4 &bull; HMAC SHA-256</span>
-        <span>&copy; {new Date().getFullYear()} STOCK OS</span>
+        <span>&copy; {new Date().getFullYear()} SP Stock &bull; Since 1989</span>
       </div>
     </div>
   );

@@ -1,16 +1,16 @@
 {
-  "name": "Polymer Stock Portal",
-  "short_name": "StockApp",
-  "description": "Plant & Godown Stock Tracker with Live Price Tracking",
+  "name": "SP Stock Enterprise",
+  "short_name": "SP Stock",
+  "description": "SP Stock Inventory Management Platform — Since 1989",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/logo.png",
+      "sizes": "500x500",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

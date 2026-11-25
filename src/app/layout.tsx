@@ -2,13 +2,17 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'STOCK OS — Enterprise Inventory Platform',
-  description: 'Enterprise Godown & Plant Inventory Management System',
+  title: 'SP Stock — Enterprise Inventory Platform',
+  description: 'SP Stock Enterprise Godown & Plant Inventory Management System — Since 1989',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Stock OS',
+    title: 'SP Stock',
   },
 };
 

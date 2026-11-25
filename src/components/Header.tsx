@@ -93,13 +93,15 @@ export default function Header({
           
           {/* Brand & Cloud Status */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white text-black font-black text-xs sm:text-sm flex items-center justify-center rounded-lg tracking-tight flex-shrink-0">
-              OS
-            </div>
+            <img
+              src="/logo.png"
+              alt="SP Stock Logo"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white object-contain p-0.5 border border-zinc-700 shadow-sm flex-shrink-0"
+            />
             <div className="leading-none min-w-0">
               <div className="flex items-center gap-1 sm:gap-1.5">
                 <span className="font-bold text-xs sm:text-sm tracking-tight text-white block truncate">
-                  STOCK OS
+                  SP Stock
                 </span>
                 {/* Cloud Live Badge */}
                 <button
@@ -111,8 +113,8 @@ export default function Header({
                   <span>{isPostgresConnected ? 'POSTGRES' : 'CLOUD SYNC'}</span>
                 </button>
               </div>
-              <span className="text-[9px] sm:text-[10px] font-mono text-zinc-500 uppercase tracking-widest block mt-0.5 truncate">
-                ENTERPRISE ERP
+              <span className="text-[9px] sm:text-[10px] font-mono text-zinc-400 uppercase tracking-widest block mt-0.5 truncate">
+                SINCE 1989 &bull; ENTERPRISE
               </span>
             </div>
           </div>
