@@ -1,4 +1,5 @@
 import { StockItem, StockLog, GodownLocation } from '@/types/stock';
+import { ProductionBatch } from '@/types/batch';
 import { INITIAL_STOCK } from '@/data/initialStock';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Pool } from 'pg';
@@ -8,6 +9,7 @@ import path from 'path';
 // Global cache for fallback when no DB is available
 let inMemoryItems: StockItem[] = [...INITIAL_STOCK];
 let inMemoryLogs: StockLog[] = [];
+let inMemoryBatches: ProductionBatch[] = [];
 
 let pool: Pool | null = null;
 let supabaseClient: SupabaseClient | null = null;
@@ -204,6 +206,23 @@ export async function initializeDatabase(customPool?: Pool): Promise<boolean> {
           target_location TEXT,
           reason TEXT,
           performed_by TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS plant_batches (
+          id TEXT PRIMARY KEY,
+          batch_number TEXT NOT NULL,
+          plant TEXT NOT NULL,
+          date TEXT NOT NULL,
+          time TEXT,
+          shift TEXT,
+          target_product TEXT,
+          operator TEXT,
+          notes TEXT,
+          items JSONB DEFAULT '[]'::jsonb,
+          total_bowls NUMERIC DEFAULT 0,
+          total_kg NUMERIC DEFAULT 0,
+          total_cost NUMERIC DEFAULT 0,
+          created_at TIMESTAMPTZ DEFAULT NOW()
         );
       `);
 
@@ -749,4 +768,166 @@ export async function setPostgresConnection(url: string | null): Promise<{
     host: testRes.host,
     rowCount: testRes.rowCount,
   };
+}
+
+// ----------------------------------------------------------------------------
+// Plant Production Batches
+// ----------------------------------------------------------------------------
+export async function getCloudBatches(): Promise<ProductionBatch[]> {
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      const { data, error } = await sb
+        .from('plant_batches')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        return data.map((row: any) => ({
+          id: row.id,
+          batchNumber: row.batch_number,
+          plant: row.plant,
+          date: row.date,
+          time: row.time,
+          shift: row.shift,
+          targetProduct: row.target_product,
+          operator: row.operator,
+          notes: row.notes,
+          items: Array.isArray(row.items) ? row.items : [],
+          totalBowls: parseFloat(row.total_bowls) || 0,
+          totalKg: parseFloat(row.total_kg) || 0,
+          totalCost: parseFloat(row.total_cost) || 0,
+          createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+        }));
+      }
+    } catch (err: any) {
+      console.warn('Supabase getCloudBatches error, falling back:', err.message);
+    }
+  }
+
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await p.query('SELECT * FROM plant_batches ORDER BY created_at DESC');
+      return res.rows.map((row: any) => ({
+        id: row.id,
+        batchNumber: row.batch_number,
+        plant: row.plant,
+        date: row.date,
+        time: row.time,
+        shift: row.shift,
+        targetProduct: row.target_product,
+        operator: row.operator,
+        notes: row.notes,
+        items: Array.isArray(row.items) ? row.items : [],
+        totalBowls: parseFloat(row.total_bowls) || 0,
+        totalKg: parseFloat(row.total_kg) || 0,
+        totalCost: parseFloat(row.total_cost) || 0,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+      }));
+    } catch (err: any) {
+      console.warn('Postgres query plant_batches failed:', err.message);
+    }
+  }
+
+  return inMemoryBatches;
+}
+
+export async function saveCloudBatch(batch: ProductionBatch): Promise<void> {
+  const idx = inMemoryBatches.findIndex((b) => b.id === batch.id);
+  if (idx >= 0) {
+    inMemoryBatches[idx] = batch;
+  } else {
+    inMemoryBatches.unshift(batch);
+  }
+
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      await sb.from('plant_batches').upsert({
+        id: batch.id,
+        batch_number: batch.batchNumber,
+        plant: batch.plant,
+        date: batch.date,
+        time: batch.time || '',
+        shift: batch.shift || 'Day',
+        target_product: batch.targetProduct || '',
+        operator: batch.operator || '',
+        notes: batch.notes || '',
+        items: batch.items,
+        total_bowls: batch.totalBowls,
+        total_kg: batch.totalKg,
+        total_cost: batch.totalCost || 0,
+        created_at: batch.createdAt || new Date().toISOString(),
+      });
+      return;
+    } catch (err: any) {
+      console.warn('Supabase saveCloudBatch error:', err.message);
+    }
+  }
+
+  const p = getPool();
+  if (p) {
+    try {
+      await p.query(
+        `INSERT INTO plant_batches (
+          id, batch_number, plant, date, time, shift, target_product, operator, notes, items, total_bowls, total_kg, total_cost, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (id) DO UPDATE SET
+          batch_number = EXCLUDED.batch_number,
+          plant = EXCLUDED.plant,
+          date = EXCLUDED.date,
+          time = EXCLUDED.time,
+          shift = EXCLUDED.shift,
+          target_product = EXCLUDED.target_product,
+          operator = EXCLUDED.operator,
+          notes = EXCLUDED.notes,
+          items = EXCLUDED.items,
+          total_bowls = EXCLUDED.total_bowls,
+          total_kg = EXCLUDED.total_kg,
+          total_cost = EXCLUDED.total_cost,
+          created_at = EXCLUDED.created_at`,
+        [
+          batch.id,
+          batch.batchNumber,
+          batch.plant,
+          batch.date,
+          batch.time || '',
+          batch.shift || 'Day',
+          batch.targetProduct || '',
+          batch.operator || '',
+          batch.notes || '',
+          JSON.stringify(batch.items),
+          batch.totalBowls,
+          batch.totalKg,
+          batch.totalCost || 0,
+          batch.createdAt || new Date().toISOString(),
+        ]
+      );
+    } catch (err: any) {
+      console.warn('PostgreSQL saveCloudBatch error:', err.message);
+    }
+  }
+}
+
+export async function deleteCloudBatch(id: string): Promise<void> {
+  inMemoryBatches = inMemoryBatches.filter((b) => b.id !== id);
+
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      await sb.from('plant_batches').delete().eq('id', id);
+      return;
+    } catch (err: any) {
+      console.warn('Supabase deleteCloudBatch error:', err.message);
+    }
+  }
+
+  const p = getPool();
+  if (p) {
+    try {
+      await p.query('DELETE FROM plant_batches WHERE id = $1', [id]);
+    } catch (err: any) {
+      console.warn('Postgres deleteCloudBatch error:', err.message);
+    }
+  }
 }

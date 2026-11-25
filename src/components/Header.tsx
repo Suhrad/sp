@@ -22,6 +22,9 @@ import {
 
 interface HeaderProps {
   session: UserSession | null;
+  activeSection?: 'inventory' | 'mixing';
+  onSectionChange?: (sec: 'inventory' | 'mixing') => void;
+  batchCount?: number;
   searchQuery: string;
   onSearchChange: (q: string) => void;
   lowStockOnly: boolean;
@@ -42,6 +45,9 @@ interface HeaderProps {
 
 export default function Header({
   session,
+  activeSection = 'inventory',
+  onSectionChange,
+  batchCount = 0,
   searchQuery,
   onSearchChange,
   lowStockOnly,
@@ -118,6 +124,41 @@ export default function Header({
               </span>
             </div>
           </div>
+
+          {/* Section Navigation Switcher */}
+          {onSectionChange && (
+            <div className="flex items-center p-0.5 bg-[#121215] border border-zinc-800 rounded-lg text-xs font-mono flex-shrink-0">
+              <button
+                onClick={() => onSectionChange('inventory')}
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 sm:gap-1.5 ${
+                  activeSection === 'inventory'
+                    ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/80'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>📦</span>
+                <span className="hidden sm:inline">Godowns</span>
+                <span className="sm:hidden">Stock</span>
+              </button>
+              <button
+                onClick={() => onSectionChange('mixing')}
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 sm:gap-1.5 ${
+                  activeSection === 'mixing'
+                    ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/80'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>🥣</span>
+                <span className="hidden sm:inline">Plant Mixing</span>
+                <span className="sm:hidden">Mixer</span>
+                {batchCount > 0 && (
+                  <span className="text-[10px] bg-orange-500/20 text-orange-400 px-1 rounded border border-orange-500/30">
+                    {batchCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Search input */}
           <div className="flex-1 max-w-sm hidden md:block">

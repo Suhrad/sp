@@ -3,12 +3,18 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { StockItem, StockLog, GodownLocation } from '@/types/stock';
+import { ProductionBatch, PlantName } from '@/types/batch';
 import { INITIAL_STOCK } from '@/data/initialStock';
 import { 
   getStoredStock, 
   saveStoredStock, 
   getStoredLogs, 
   saveStoredLogs, 
+  getStoredBatches,
+  saveStoredBatches,
+  fetchCloudBatches,
+  saveBatchToCloud,
+  deleteBatchFromCloud,
   appendLog, 
   calculateSummary, 
   exportToCSV,
@@ -31,6 +37,8 @@ import AddItemModal from '@/components/AddItemModal';
 import EditItemModal from '@/components/EditItemModal';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import SettingsModal from '@/components/SettingsModal';
+import PlantMixingView from '@/components/PlantMixingView';
+import AddBatchModal from '@/components/AddBatchModal';
 
 import { PackageOpen, Plus } from 'lucide-react';
 
@@ -44,6 +52,12 @@ export default function DashboardPage() {
   // Core Data
   const [items, setItems] = useState<StockItem[]>([]);
   const [logs, setLogs] = useState<StockLog[]>([]);
+
+  // Plant Mixing Batches
+  const [activeSection, setActiveSection] = useState<'inventory' | 'mixing'>('inventory');
+  const [batches, setBatches] = useState<ProductionBatch[]>([]);
+  const [addBatchOpen, setAddBatchOpen] = useState(false);
+  const [defaultBatchPlant, setDefaultBatchPlant] = useState<PlantName>('Single Plant');
 
   // Cloud Sync State
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -81,6 +95,11 @@ export default function DashboardPage() {
       }
       setIsPostgresConnected(cloudData.postgresActive);
     }
+    const cloudBatches = await fetchCloudBatches();
+    if (cloudBatches) {
+      setBatches(cloudBatches);
+      saveStoredBatches(cloudBatches);
+    }
     setIsSyncing(false);
   }, []);
 
@@ -96,6 +115,7 @@ export default function DashboardPage() {
       const cached = getStoredStock();
       setItems(cached);
       setLogs(getStoredLogs());
+      setBatches(getStoredBatches());
 
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
         setViewMode('cards');
@@ -461,6 +481,19 @@ export default function DashboardPage() {
     }
   };
 
+  const handleAddBatch = (newBatch: ProductionBatch) => {
+    setBatches((prev) => [newBatch, ...prev]);
+    saveStoredBatches([newBatch, ...batches]);
+    saveBatchToCloud(newBatch);
+  };
+
+  const handleDeleteBatch = (id: string) => {
+    setBatches((prev) => prev.filter((b) => b.id !== id));
+    const updated = batches.filter((b) => b.id !== id);
+    saveStoredBatches(updated);
+    deleteBatchFromCloud(id);
+  };
+
   const summary = useMemo(() => calculateSummary(items), [items]);
 
   const filteredItems = useMemo(() => {
@@ -521,6 +554,9 @@ export default function DashboardPage() {
       {/* Navigation Header */}
       <Header
         session={session}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        batchCount={batches.length}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         lowStockOnly={lowStockOnly}
@@ -541,14 +577,25 @@ export default function DashboardPage() {
 
       {/* Main Workspace Container */}
       <main className="flex-1 w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-4">
-        
-        {/* Metric Bar */}
-        <SummaryCards
-          summary={summary}
-          items={items}
-          selectedLocation={selectedLocation}
-          onSelectLocation={setSelectedLocation}
-        />
+        {activeSection === 'mixing' ? (
+          <PlantMixingView
+            batches={batches}
+            stockItems={items}
+            onOpenAddBatch={(plant) => {
+              if (plant) setDefaultBatchPlant(plant);
+              setAddBatchOpen(true);
+            }}
+            onDeleteBatch={handleDeleteBatch}
+          />
+        ) : (
+          <>
+            {/* Metric Bar */}
+            <SummaryCards
+              summary={summary}
+              items={items}
+              selectedLocation={selectedLocation}
+              onSelectLocation={setSelectedLocation}
+            />
 
         {/* Location Tabs */}
         <GodownTabs
@@ -666,20 +713,36 @@ export default function DashboardPage() {
             </div>
           </>
         )}
-      </main>
+      </>
+    )}
+  </main>
 
-      {/* Floating Add on Mobile */}
-      <div className="fixed bottom-4 right-4 sm:hidden z-30">
-        <button
-          onClick={() => setAddItemOpen(true)}
-          className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-95 transition-all"
-          title="Add New Lot"
-        >
-          <Plus className="w-6 h-6 stroke-[2.5]" />
-        </button>
-      </div>
+  {/* Floating Add on Mobile */}
+  <div className="fixed bottom-4 right-4 sm:hidden z-30">
+    <button
+      onClick={() => {
+        if (activeSection === 'mixing') {
+          setAddBatchOpen(true);
+        } else {
+          setAddItemOpen(true);
+        }
+      }}
+      className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-95 transition-all"
+      title={activeSection === 'mixing' ? 'New Mixer Batch' : 'Add New Lot'}
+    >
+      <Plus className="w-6 h-6 stroke-[2.5]" />
+    </button>
+  </div>
 
-      {/* Modals */}
+  {/* Modals */}
+  {addBatchOpen && (
+    <AddBatchModal
+      onClose={() => setAddBatchOpen(false)}
+      onSaveBatch={handleAddBatch}
+      stockItems={items}
+      defaultPlant={defaultBatchPlant}
+    />
+  )}
       {adjustTarget && (
         <AdjustModal
           item={adjustTarget.item}
