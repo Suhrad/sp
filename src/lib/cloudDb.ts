@@ -1,14 +1,16 @@
 import { StockItem, StockLog, GodownLocation } from '@/types/stock';
 import { INITIAL_STOCK } from '@/data/initialStock';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Pool } from 'pg';
 import fs from 'fs';
 import path from 'path';
 
-// Global cache for fallback when no Postgres URL is provided yet
+// Global cache for fallback when no DB is available
 let inMemoryItems: StockItem[] = [...INITIAL_STOCK];
 let inMemoryLogs: StockLog[] = [];
 
 let pool: Pool | null = null;
+let supabaseClient: SupabaseClient | null = null;
 let activeConnectionString: string | null = null;
 
 // Paths for runtime config persistence
@@ -47,6 +49,30 @@ function saveConnectionUrl(url: string | null): void {
   }
 }
 
+// ----------------------------------------------------------------------------
+// Supabase Client Helper
+// ----------------------------------------------------------------------------
+export function getSupabaseClient(): SupabaseClient | null {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+
+  if (!supabaseClient) {
+    try {
+      supabaseClient = createClient(url, key, {
+        auth: { persistSession: false },
+      });
+    } catch (err: any) {
+      console.warn('Failed to initialize Supabase client:', err.message);
+      return null;
+    }
+  }
+  return supabaseClient;
+}
+
+// ----------------------------------------------------------------------------
+// PostgreSQL Pool Helper
+// ----------------------------------------------------------------------------
 export function getPostgresUrl(): string | null {
   if (activeConnectionString) return activeConnectionString;
 
@@ -88,7 +114,7 @@ export function getPool(forceNew = false): Pool | null {
       ssl: url.includes('localhost') ? false : { rejectUnauthorized: false },
       max: 5,
       idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 8000,
+      connectionTimeoutMillis: 5000,
     });
 
     pool.on('error', (err) => {
@@ -98,8 +124,13 @@ export function getPool(forceNew = false): Pool | null {
   return pool;
 }
 
-// Extract clean host name for display (masking passwords)
 export function getSanitizedHost(urlStr?: string | null): string {
+  if (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    try {
+      const parsed = new URL(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!);
+      return parsed.host;
+    } catch {}
+  }
   const url = urlStr || getPostgresUrl();
   if (!url) return 'Local In-Memory Cache';
   try {
@@ -110,8 +141,27 @@ export function getSanitizedHost(urlStr?: string | null): string {
   }
 }
 
-// Initialize tables and seed default inventory if empty
+// ----------------------------------------------------------------------------
+// Database Initialization & Auto-Migration
+// ----------------------------------------------------------------------------
 export async function initializeDatabase(customPool?: Pool): Promise<boolean> {
+  // If Supabase client is available, verify tables
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      const { count, error } = await sb.from('inventory_items').select('*', { count: 'exact', head: true });
+      if (!error && (count === 0 || count === null)) {
+        // Seed items
+        for (const item of INITIAL_STOCK) {
+          await upsertCloudItem(item);
+        }
+      }
+      return true;
+    } catch {
+      // Fall through to postgres pool
+    }
+  }
+
   const p = customPool || getPool();
   if (!p) return false;
 
@@ -157,12 +207,10 @@ export async function initializeDatabase(customPool?: Pool): Promise<boolean> {
         );
       `);
 
-      // Check count
       const countRes = await client.query('SELECT COUNT(*) FROM inventory_items');
       const count = parseInt(countRes.rows[0].count, 10);
 
       if (count === 0) {
-        // Seed initial items
         for (const item of INITIAL_STOCK) {
           await client.query(
             `INSERT INTO inventory_items (
@@ -191,7 +239,7 @@ export async function initializeDatabase(customPool?: Pool): Promise<boolean> {
         }
       }
 
-      // Migrate any previously seeded outside godown items to Outside Godown 1 & 2
+      // Migrate Outside Godown items
       await client.query(`
         UPDATE inventory_items SET location = 'Outside Godown 1'
         WHERE id IN ('g1-fg-1', 'g1-fg-2', 'g1-rm-1', 'g1-rm-2', 'g1-rm-3', 'g1-fg-3') AND location = 'Godown 1';
@@ -210,144 +258,116 @@ export async function initializeDatabase(customPool?: Pool): Promise<boolean> {
   }
 }
 
-// Test a prospective connection string
-export async function testConnection(candidateUrl: string): Promise<{
-  success: boolean;
-  message: string;
-  host?: string;
-  pingMs?: number;
-  rowCount?: number;
-}> {
-  const start = Date.now();
-  let tempPool: Pool | null = null;
-  try {
-    tempPool = new Pool({
-      connectionString: candidateUrl,
-      ssl: candidateUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-      max: 1,
-      connectionTimeoutMillis: 7000,
-    });
-
-    const client = await tempPool.connect();
-    try {
-      const ping = await client.query('SELECT NOW() as now, current_database() as db');
-      const latency = Date.now() - start;
-
-      // Also ensure tables are initialized
-      await initializeDatabase(tempPool);
-
-      const countRes = await client.query('SELECT COUNT(*) FROM inventory_items');
-      const rowCount = parseInt(countRes.rows[0]?.count || '0', 10);
-
-      return {
-        success: true,
-        message: 'Successfully connected to PostgreSQL!',
-        host: getSanitizedHost(candidateUrl),
-        pingMs: latency,
-        rowCount,
-      };
-    } finally {
-      client.release();
-    }
-  } catch (err: any) {
-    return {
-      success: false,
-      message: err.message || 'Failed to connect to database',
-    };
-  } finally {
-    if (tempPool) {
-      tempPool.end().catch(() => {});
-    }
-  }
-}
-
-// Save and activate a connection URL
-export async function setPostgresConnection(url: string | null): Promise<{
-  success: boolean;
-  message: string;
-  host?: string;
-  rowCount?: number;
-}> {
-  if (!url || !url.trim()) {
-    activeConnectionString = null;
-    saveConnectionUrl(null);
-    if (pool) {
-      pool.end().catch(() => {});
-      pool = null;
-    }
-    return { success: true, message: 'Reverted to local/in-memory mode.' };
-  }
-
-  const trimmed = url.trim();
-  const testRes = await testConnection(trimmed);
-  if (!testRes.success) {
-    return testRes;
-  }
-
-  // Activate and persist
-  activeConnectionString = trimmed;
-  saveConnectionUrl(trimmed);
-  getPool(true); // Re-initialize pool
-  await initializeDatabase();
-
-  return {
-    success: true,
-    message: 'PostgreSQL cloud database connected and synced!',
-    host: testRes.host,
-    rowCount: testRes.rowCount,
-  };
-}
-
-// Retrieve items
+// ----------------------------------------------------------------------------
+// Item Retrieval
+// ----------------------------------------------------------------------------
 export async function getCloudItems(): Promise<StockItem[]> {
-  const p = getPool();
-  if (!p) {
-    return inMemoryItems.map(item => {
-      if ((item.id.startsWith('g1-fg-') || item.id.startsWith('g1-rm-')) && item.location === 'Godown 1') {
-        return { ...item, location: 'Outside Godown 1' as GodownLocation };
+  // 1. Try Supabase REST client
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      const { data, error } = await sb
+        .from('inventory_items')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        return data.map((row) => ({
+          id: row.id,
+          name: row.name,
+          location: row.location as GodownLocation,
+          category: row.category,
+          totalBags: parseFloat(row.total_bags) || 0,
+          kg: parseFloat(row.kg) || 0,
+          avgKgPerBag: parseFloat(row.avg_kg_per_bag) || 25,
+          currentPrice: parseFloat(row.current_price) || 0,
+          previousPrice: row.previous_price ? parseFloat(row.previous_price) : null,
+          lowStockThresholdBags: parseFloat(row.low_stock_threshold_bags) || 10,
+          lowStockThresholdKg: parseFloat(row.low_stock_threshold_kg) || 250,
+          isBulk: Boolean(row.is_bulk),
+          updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+          priceHistory: Array.isArray(row.price_history) ? row.price_history : [],
+        }));
       }
-      if ((item.id.startsWith('g3-fg-') || item.id.startsWith('g3-rm-')) && item.location === 'Godown 3') {
-        return { ...item, location: 'Outside Godown 2' as GodownLocation };
-      }
-      return item;
-    });
+    } catch (err: any) {
+      console.warn('Supabase fetch error, trying Postgres pool:', err.message);
+    }
   }
 
-  try {
-    await initializeDatabase();
-    const res = await p.query('SELECT * FROM inventory_items ORDER BY updated_at DESC');
-    if (res.rows.length === 0) {
-      return inMemoryItems;
+  // 2. Try PostgreSQL Pool
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await p.query('SELECT * FROM inventory_items ORDER BY updated_at DESC');
+      if (res.rows.length > 0) {
+        return res.rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          location: row.location as GodownLocation,
+          category: row.category,
+          totalBags: parseFloat(row.total_bags) || 0,
+          kg: parseFloat(row.kg) || 0,
+          avgKgPerBag: parseFloat(row.avg_kg_per_bag) || 25,
+          currentPrice: parseFloat(row.current_price) || 0,
+          previousPrice: row.previous_price ? parseFloat(row.previous_price) : null,
+          lowStockThresholdBags: parseFloat(row.low_stock_threshold_bags) || 10,
+          lowStockThresholdKg: parseFloat(row.low_stock_threshold_kg) || 250,
+          isBulk: Boolean(row.is_bulk),
+          updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+          priceHistory: Array.isArray(row.price_history) ? row.price_history : [],
+        }));
+      }
+    } catch (err: any) {
+      console.warn('PostgreSQL query error, using in-memory:', err.message);
     }
-    return res.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      location: row.location,
-      category: row.category,
-      totalBags: parseFloat(row.total_bags) || 0,
-      kg: parseFloat(row.kg) || 0,
-      avgKgPerBag: parseFloat(row.avg_kg_per_bag) || 25,
-      currentPrice: parseFloat(row.current_price) || 0,
-      previousPrice: row.previous_price ? parseFloat(row.previous_price) : null,
-      lowStockThresholdBags: parseFloat(row.low_stock_threshold_bags) || 10,
-      lowStockThresholdKg: parseFloat(row.low_stock_threshold_kg) || 250,
-      isBulk: Boolean(row.is_bulk),
-      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-      priceHistory: Array.isArray(row.price_history) ? row.price_history : [],
-    }));
-  } catch (err: any) {
-    console.error('Failed to get items from Postgres:', err.message);
-    return inMemoryItems;
   }
+
+  // 3. Fallback: In-Memory Cache
+  return inMemoryItems.map((item) => {
+    if ((item.id.startsWith('g1-fg-') || item.id.startsWith('g1-rm-')) && item.location === 'Godown 1') {
+      return { ...item, location: 'Outside Godown 1' as GodownLocation };
+    }
+    if ((item.id.startsWith('g3-fg-') || item.id.startsWith('g3-rm-')) && item.location === 'Godown 3') {
+      return { ...item, location: 'Outside Godown 2' as GodownLocation };
+    }
+    return item;
+  });
 }
 
-// Upsert a single item
+// ----------------------------------------------------------------------------
+// Upsert Single Item
+// ----------------------------------------------------------------------------
 export async function upsertCloudItem(item: StockItem): Promise<void> {
   const idx = inMemoryItems.findIndex((i) => i.id === item.id);
   if (idx >= 0) {
     inMemoryItems[idx] = item;
   } else {
     inMemoryItems.unshift(item);
+  }
+
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      await sb.from('inventory_items').upsert({
+        id: item.id,
+        name: item.name,
+        location: item.location,
+        category: item.category || 'Raw Material',
+        total_bags: item.totalBags,
+        kg: item.kg,
+        avg_kg_per_bag: item.avgKgPerBag,
+        current_price: item.currentPrice,
+        previous_price: item.previousPrice,
+        low_stock_threshold_bags: item.lowStockThresholdBags,
+        low_stock_threshold_kg: item.lowStockThresholdKg,
+        is_bulk: Boolean(item.isBulk),
+        updated_at: item.updatedAt || new Date().toISOString(),
+        price_history: item.priceHistory || [],
+      });
+      return;
+    } catch (err: any) {
+      console.warn('Supabase upsert failed, trying Postgres pool:', err.message);
+    }
   }
 
   const p = getPool();
@@ -396,9 +416,19 @@ export async function upsertCloudItem(item: StockItem): Promise<void> {
   }
 }
 
-// Delete item
+// ----------------------------------------------------------------------------
+// Delete Item
+// ----------------------------------------------------------------------------
 export async function deleteCloudItem(id: string): Promise<void> {
   inMemoryItems = inMemoryItems.filter((i) => i.id !== id);
+
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      await sb.from('inventory_items').delete().eq('id', id);
+      return;
+    } catch {}
+  }
 
   const p = getPool();
   if (!p) return;
@@ -410,7 +440,9 @@ export async function deleteCloudItem(id: string): Promise<void> {
   }
 }
 
-// Append log
+// ----------------------------------------------------------------------------
+// Logs
+// ----------------------------------------------------------------------------
 export async function recordCloudLog(log: Omit<StockLog, 'id' | 'timestamp'>): Promise<StockLog> {
   const newLog: StockLog = {
     ...log,
@@ -420,6 +452,32 @@ export async function recordCloudLog(log: Omit<StockLog, 'id' | 'timestamp'>): P
 
   inMemoryLogs.unshift(newLog);
   if (inMemoryLogs.length > 500) inMemoryLogs.pop();
+
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      await sb.from('inventory_logs').insert({
+        id: newLog.id,
+        timestamp: newLog.timestamp,
+        item_id: newLog.itemId,
+        item_name: newLog.itemName,
+        location: newLog.location,
+        type: newLog.type,
+        delta_bags: newLog.deltaBags || null,
+        delta_kg: newLog.deltaKg || null,
+        old_bags: newLog.oldBags ?? null,
+        new_bags: newLog.newBags ?? null,
+        old_kg: newLog.oldKg ?? null,
+        new_kg: newLog.newKg ?? null,
+        old_price: newLog.oldPrice ?? null,
+        new_price: newLog.newPrice ?? null,
+        target_location: newLog.targetLocation || null,
+        reason: newLog.reason || null,
+        performed_by: newLog.performedBy || 'Admin',
+      });
+      return newLog;
+    } catch {}
+  }
 
   const p = getPool();
   if (!p) return newLog;
@@ -458,13 +516,44 @@ export async function recordCloudLog(log: Omit<StockLog, 'id' | 'timestamp'>): P
   return newLog;
 }
 
-// Get logs
 export async function getCloudLogs(): Promise<StockLog[]> {
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      const { data, error } = await sb
+        .from('inventory_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(200);
+
+      if (!error && Array.isArray(data)) {
+        return data.map((row) => ({
+          id: row.id,
+          timestamp: row.timestamp ? new Date(row.timestamp).toISOString() : new Date().toISOString(),
+          itemId: row.item_id,
+          itemName: row.item_name,
+          location: row.location,
+          type: row.type,
+          deltaBags: row.delta_bags ? parseFloat(row.delta_bags) : undefined,
+          deltaKg: row.delta_kg ? parseFloat(row.delta_kg) : undefined,
+          oldBags: row.old_bags ? parseFloat(row.old_bags) : undefined,
+          newBags: row.new_bags ? parseFloat(row.new_bags) : undefined,
+          oldKg: row.old_kg ? parseFloat(row.old_kg) : undefined,
+          newKg: row.new_kg ? parseFloat(row.new_kg) : undefined,
+          oldPrice: row.old_price ? parseFloat(row.old_price) : undefined,
+          newPrice: row.new_price ? parseFloat(row.new_price) : undefined,
+          targetLocation: row.target_location,
+          reason: row.reason,
+          performedBy: row.performed_by,
+        }));
+      }
+    } catch {}
+  }
+
   const p = getPool();
   if (!p) return inMemoryLogs;
 
   try {
-    await initializeDatabase();
     const res = await p.query('SELECT * FROM inventory_logs ORDER BY timestamp DESC LIMIT 200');
     return res.rows.map((row) => ({
       id: row.id,
@@ -485,16 +574,26 @@ export async function getCloudLogs(): Promise<StockLog[]> {
       reason: row.reason,
       performedBy: row.performed_by,
     }));
-  } catch (err: any) {
-    console.error('PostgreSQL get logs error:', err.message);
+  } catch {
     return inMemoryLogs;
   }
 }
 
-// Reset all items to factory initial seed
 export async function resetCloudToFactory(): Promise<void> {
   inMemoryItems = [...INITIAL_STOCK];
   inMemoryLogs = [];
+
+  const sb = getSupabaseClient();
+  if (sb) {
+    try {
+      await sb.from('inventory_items').delete().neq('id', '___non_existent___');
+      await sb.from('inventory_logs').delete().neq('id', '___non_existent___');
+      for (const item of INITIAL_STOCK) {
+        await upsertCloudItem(item);
+      }
+      return;
+    } catch {}
+  }
 
   const p = getPool();
   if (!p) return;
@@ -505,13 +604,11 @@ export async function resetCloudToFactory(): Promise<void> {
     for (const item of INITIAL_STOCK) {
       await upsertCloudItem(item);
     }
-  } catch (err: any) {
-    console.error('PostgreSQL reset error:', err.message);
-  }
+  } catch {}
 }
 
 export function isPostgresConnected(): boolean {
-  return Boolean(getPostgresUrl());
+  return Boolean(getSupabaseClient() || getPostgresUrl());
 }
 
 export async function getDatabaseStatus(): Promise<{
@@ -521,41 +618,135 @@ export async function getDatabaseStatus(): Promise<{
   rowCount: number;
   pingMs?: number;
 }> {
+  // 1. Supabase Client Check
+  const sb = getSupabaseClient();
+  if (sb) {
+    const start = Date.now();
+    try {
+      const { count, error } = await sb
+        .from('inventory_items')
+        .select('*', { count: 'exact', head: true });
+
+      const pingMs = Date.now() - start;
+      if (!error) {
+        return {
+          connected: true,
+          provider: 'Supabase PostgreSQL',
+          host: getSanitizedHost(),
+          rowCount: count ?? inMemoryItems.length,
+          pingMs,
+        };
+      }
+    } catch {}
+  }
+
+  // 2. PostgreSQL Pool Check
   const p = getPool();
-  if (!p) {
-    return {
-      connected: false,
-      provider: 'Local Edge In-Memory',
-      host: 'local',
-      rowCount: inMemoryItems.length,
-    };
+  if (p) {
+    const start = Date.now();
+    try {
+      const res = await p.query('SELECT COUNT(*) FROM inventory_items');
+      const pingMs = Date.now() - start;
+      const rowCount = parseInt(res.rows[0]?.count || '0', 10);
+      return {
+        connected: true,
+        provider: 'PostgreSQL Database',
+        host: getSanitizedHost(),
+        rowCount,
+        pingMs,
+      };
+    } catch {}
   }
 
+  return {
+    connected: false,
+    provider: 'Local Edge In-Memory',
+    host: 'local',
+    rowCount: inMemoryItems.length,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// Candidate Connection String Tester
+// ----------------------------------------------------------------------------
+export async function testConnection(candidateUrl: string): Promise<{
+  success: boolean;
+  message: string;
+  host?: string;
+  pingMs?: number;
+  rowCount?: number;
+}> {
   const start = Date.now();
+  let tempPool: Pool | null = null;
   try {
-    const res = await p.query('SELECT COUNT(*) FROM inventory_items');
-    const pingMs = Date.now() - start;
-    const rowCount = parseInt(res.rows[0]?.count || '0', 10);
-    const host = getSanitizedHost();
-    const provider = host.includes('supabase')
-      ? 'Supabase PostgreSQL'
-      : host.includes('neon')
-      ? 'Neon Serverless Postgres'
-      : 'PostgreSQL Database';
+    tempPool = new Pool({
+      connectionString: candidateUrl,
+      ssl: candidateUrl.includes('localhost') ? false : { rejectUnauthorized: false },
+      max: 1,
+      connectionTimeoutMillis: 7000,
+    });
 
+    const client = await tempPool.connect();
+    try {
+      await client.query('SELECT NOW()');
+      const latency = Date.now() - start;
+      await initializeDatabase(tempPool);
+      const countRes = await client.query('SELECT COUNT(*) FROM inventory_items');
+      const rowCount = parseInt(countRes.rows[0]?.count || '0', 10);
+
+      return {
+        success: true,
+        message: 'Successfully connected to PostgreSQL!',
+        host: getSanitizedHost(candidateUrl),
+        pingMs: latency,
+        rowCount,
+      };
+    } finally {
+      client.release();
+    }
+  } catch (err: any) {
     return {
-      connected: true,
-      provider,
-      host,
-      rowCount,
-      pingMs,
+      success: false,
+      message: err.message || 'Failed to connect to database',
     };
-  } catch (err) {
-    return {
-      connected: false,
-      provider: 'Connection Error',
-      host: getSanitizedHost(),
-      rowCount: inMemoryItems.length,
-    };
+  } finally {
+    if (tempPool) {
+      tempPool.end().catch(() => {});
+    }
   }
+}
+
+export async function setPostgresConnection(url: string | null): Promise<{
+  success: boolean;
+  message: string;
+  host?: string;
+  rowCount?: number;
+}> {
+  if (!url || !url.trim()) {
+    activeConnectionString = null;
+    saveConnectionUrl(null);
+    if (pool) {
+      pool.end().catch(() => {});
+      pool = null;
+    }
+    return { success: true, message: 'Reverted to local/in-memory mode.' };
+  }
+
+  const trimmed = url.trim();
+  const testRes = await testConnection(trimmed);
+  if (!testRes.success) {
+    return testRes;
+  }
+
+  activeConnectionString = trimmed;
+  saveConnectionUrl(trimmed);
+  getPool(true);
+  await initializeDatabase();
+
+  return {
+    success: true,
+    message: 'PostgreSQL cloud database connected and synced!',
+    host: testRes.host,
+    rowCount: testRes.rowCount,
+  };
 }
