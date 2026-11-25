@@ -540,7 +540,7 @@ export default function DashboardPage() {
       />
 
       {/* Main Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 space-y-4">
+      <main className="flex-1 w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-4">
         
         {/* Metric Bar */}
         <SummaryCards

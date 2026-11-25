@@ -82,7 +82,7 @@ export default function StockTable({
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => onOpenEditItem(item)}
-                        className="text-left hover:underline truncate max-w-[210px] flex items-center gap-1.5 group/name"
+                        className="text-left hover:underline truncate max-w-[260px] sm:max-w-md lg:max-w-xl xl:max-w-none flex items-center gap-1.5 group/name"
                         title="Click to edit item name and details"
                       >
                         <span className="truncate">{item.name}</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { serverLogout, UserSession } from '@/lib/auth';
 import { 
@@ -15,7 +15,9 @@ import {
   LayoutGrid,
   Table as TableIcon,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -58,6 +60,24 @@ export default function Header({
   onManualSync,
 }: HeaderProps) {
   const router = useRouter();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (typeof document === 'undefined') return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
 
   const handleLogout = async () => {
     if (confirm('Log out from Stock Platform?')) {
@@ -68,7 +88,7 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-30 bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 gap-3">
           
           {/* Brand & Cloud Status */}
@@ -208,6 +228,15 @@ export default function Header({
               title="Export CSV"
             >
               <Download className="w-4 h-4" />
+            </button>
+
+            {/* Fullscreen toggle */}
+            <button
+              onClick={toggleFullscreen}
+              className="p-1.5 rounded-lg bg-[#121215] border border-zinc-800 text-zinc-400 hover:text-white transition-colors hidden sm:flex items-center justify-center"
+              title={isFullscreen ? 'Exit Full Screen (Esc)' : 'Enter Full Screen'}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4 text-white" /> : <Maximize2 className="w-4 h-4" />}
             </button>
 
             {/* Settings */}
