@@ -57,6 +57,7 @@ export default function DashboardPage() {
   const [activeSection, setActiveSection] = useState<'inventory' | 'mixing'>('inventory');
   const [batches, setBatches] = useState<ProductionBatch[]>([]);
   const [addBatchOpen, setAddBatchOpen] = useState(false);
+  const [editingBatch, setEditingBatch] = useState<ProductionBatch | null>(null);
   const [defaultBatchPlant, setDefaultBatchPlant] = useState<PlantName>('Single Plant');
 
   // Cloud Sync State
@@ -481,10 +482,20 @@ export default function DashboardPage() {
     }
   };
 
-  const handleAddBatch = (newBatch: ProductionBatch) => {
-    setBatches((prev) => [newBatch, ...prev]);
-    saveStoredBatches([newBatch, ...batches]);
-    saveBatchToCloud(newBatch);
+  const handleAddBatch = (savedBatch: ProductionBatch) => {
+    setBatches((prev) => {
+      const exists = prev.some((b) => b.id === savedBatch.id);
+      let updated: ProductionBatch[];
+      if (exists) {
+        updated = prev.map((b) => (b.id === savedBatch.id ? savedBatch : b));
+      } else {
+        updated = [savedBatch, ...prev];
+      }
+      saveStoredBatches(updated);
+      return updated;
+    });
+    saveBatchToCloud(savedBatch);
+    setEditingBatch(null);
   };
 
   const handleDeleteBatch = (id: string) => {
@@ -583,6 +594,11 @@ export default function DashboardPage() {
             stockItems={items}
             onOpenAddBatch={(plant) => {
               if (plant) setDefaultBatchPlant(plant);
+              setEditingBatch(null);
+              setAddBatchOpen(true);
+            }}
+            onEditBatch={(batch) => {
+              setEditingBatch(batch);
               setAddBatchOpen(true);
             }}
             onDeleteBatch={handleDeleteBatch}
@@ -722,6 +738,7 @@ export default function DashboardPage() {
     <button
       onClick={() => {
         if (activeSection === 'mixing') {
+          setEditingBatch(null);
           setAddBatchOpen(true);
         } else {
           setAddItemOpen(true);
@@ -737,10 +754,14 @@ export default function DashboardPage() {
   {/* Modals */}
   {addBatchOpen && (
     <AddBatchModal
-      onClose={() => setAddBatchOpen(false)}
+      onClose={() => {
+        setAddBatchOpen(false);
+        setEditingBatch(null);
+      }}
       onSaveBatch={handleAddBatch}
       stockItems={items}
       defaultPlant={defaultBatchPlant}
+      initialBatch={editingBatch}
     />
   )}
       {adjustTarget && (

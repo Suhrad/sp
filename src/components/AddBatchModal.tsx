@@ -10,6 +10,7 @@ interface AddBatchModalProps {
   onSaveBatch: (batch: ProductionBatch) => void;
   stockItems: StockItem[];
   defaultPlant?: PlantName;
+  initialBatch?: ProductionBatch | null;
 }
 
 export default function AddBatchModal({
@@ -17,6 +18,7 @@ export default function AddBatchModal({
   onSaveBatch,
   stockItems,
   defaultPlant = 'Single Plant',
+  initialBatch = null,
 }: AddBatchModalProps) {
   // Available Raw Materials from inventory
   const rawMaterials = useMemo(() => {
@@ -25,51 +27,56 @@ export default function AddBatchModal({
     );
   }, [stockItems]);
 
-  const [plant, setPlant] = useState<PlantName>(defaultPlant);
-  const [shift, setShift] = useState<'Morning' | 'Day' | 'Night'>('Day');
-  const [targetProduct, setTargetProduct] = useState('');
-  const [operator, setOperator] = useState('');
-  const [notes, setNotes] = useState('');
+  const [plant, setPlant] = useState<PlantName>(initialBatch?.plant || defaultPlant);
+  const [shift, setShift] = useState<'Morning' | 'Day' | 'Night'>(initialBatch?.shift || 'Day');
+  const [targetProduct, setTargetProduct] = useState(initialBatch?.targetProduct || '');
+  const [operator, setOperator] = useState(initialBatch?.operator || '');
+  const [notes, setNotes] = useState(initialBatch?.notes || '');
 
-  // Auto-generate batch number with today's date
+  // Auto-generate batch number with today's date if not editing
   const todayStr = useMemo(() => {
     const d = new Date();
     return d.toISOString().split('T')[0];
   }, []);
 
   const defaultBatchNo = useMemo(() => {
+    if (initialBatch) return initialBatch.batchNumber;
     const d = new Date();
     const timePart = `${d.getHours().toString().padStart(2, '0')}${d.getMinutes().toString().padStart(2, '0')}`;
     const plantCode = plant === 'Single Plant' ? 'SP' : 'RP';
     return `${plantCode}-${todayStr.replace(/-/g, '').slice(2)}-${timePart}`;
-  }, [plant, todayStr]);
+  }, [plant, todayStr, initialBatch]);
 
-  const [batchNumber, setBatchNumber] = useState(defaultBatchNo);
-  const [date, setDate] = useState(todayStr);
+  const [batchNumber, setBatchNumber] = useState(initialBatch?.batchNumber || defaultBatchNo);
+  const [date, setDate] = useState(initialBatch?.date || todayStr);
 
   // Initial ingredient rows
-  const [items, setItems] = useState<BatchItem[]>([
-    {
-      id: `item-1-${Date.now()}`,
-      materialName: rawMaterials[0]?.name || 'PP Mix Dana',
-      bowls: 4,
-      kgPerBowl: 5,
-      totalKg: 20,
-      ratePerKg: rawMaterials[0]?.currentPrice || 90,
-      sourceGodown: rawMaterials[0]?.location || 'Godown 1',
-      itemId: rawMaterials[0]?.id,
-    },
-    {
-      id: `item-2-${Date.now()}`,
-      materialName: rawMaterials[1]?.name || 'Powder / Additive',
-      bowls: 1,
-      kgPerBowl: 5,
-      totalKg: 5,
-      ratePerKg: rawMaterials[1]?.currentPrice || 85,
-      sourceGodown: rawMaterials[1]?.location || 'Godown 1',
-      itemId: rawMaterials[1]?.id,
-    },
-  ]);
+  const [items, setItems] = useState<BatchItem[]>(
+    initialBatch?.items && initialBatch.items.length > 0
+      ? initialBatch.items
+      : [
+          {
+            id: `item-1-${Date.now()}`,
+            materialName: rawMaterials[0]?.name || 'PP Mix Dana',
+            bowls: 4,
+            kgPerBowl: 5,
+            totalKg: 20,
+            ratePerKg: rawMaterials[0]?.currentPrice || 90,
+            sourceGodown: rawMaterials[0]?.location || 'Godown 1',
+            itemId: rawMaterials[0]?.id,
+          },
+          {
+            id: `item-2-${Date.now()}`,
+            materialName: rawMaterials[1]?.name || 'Powder / Additive',
+            bowls: 1,
+            kgPerBowl: 5,
+            totalKg: 5,
+            ratePerKg: rawMaterials[1]?.currentPrice || 85,
+            sourceGodown: rawMaterials[1]?.location || 'Godown 1',
+            itemId: rawMaterials[1]?.id,
+          },
+        ]
+  );
 
   // Adjust an item's fields
   const updateItem = (id: string, updates: Partial<BatchItem>) => {
@@ -148,12 +155,12 @@ export default function AddBatchModal({
       return;
     }
 
-    const newBatch: ProductionBatch = {
-      id: `batch-${Date.now()}`,
+    const savedBatch: ProductionBatch = {
+      id: initialBatch?.id || `batch-${Date.now()}`,
       batchNumber: batchNumber.trim(),
       plant,
       date,
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      time: initialBatch?.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
       shift,
       targetProduct: targetProduct.trim() || undefined,
       operator: operator.trim() || undefined,
@@ -162,10 +169,10 @@ export default function AddBatchModal({
       totalBowls,
       totalKg,
       totalCost,
-      createdAt: new Date().toISOString(),
+      createdAt: initialBatch?.createdAt || new Date().toISOString(),
     };
 
-    onSaveBatch(newBatch);
+    onSaveBatch(savedBatch);
     onClose();
   };
 
@@ -177,13 +184,15 @@ export default function AddBatchModal({
         <div className="px-5 py-4 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/60">
           <div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+              <span className={`w-2.5 h-2.5 rounded-full ${initialBatch ? 'bg-blue-400' : 'bg-orange-500'} animate-pulse`} />
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                New Mixer Batch Entry
+                {initialBatch ? 'Edit Mixer Batch' : 'New Mixer Batch Entry'}
               </h2>
             </div>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Record materials & bowls added into the mixer • Log & Recipe tracking
+              {initialBatch
+                ? `Editing ${initialBatch.batchNumber} • ${plant}`
+                : 'Record materials & bowls added into the mixer • Log & Recipe tracking'}
             </p>
           </div>
           <button
@@ -512,7 +521,7 @@ export default function AddBatchModal({
               className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black font-bold text-xs rounded-lg transition-all shadow-md flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              <span>Save Mixer Batch</span>
+              <span>{initialBatch ? 'Update Mixer Batch' : 'Save Mixer Batch'}</span>
             </button>
           </div>
         </form>

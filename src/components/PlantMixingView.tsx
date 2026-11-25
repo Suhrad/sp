@@ -8,6 +8,7 @@ import {
   Search, 
   Download, 
   Trash2, 
+  Pencil,
   Scale, 
   Calendar, 
   Clock, 
@@ -24,6 +25,7 @@ interface PlantMixingViewProps {
   batches: ProductionBatch[];
   stockItems: StockItem[];
   onOpenAddBatch: (defaultPlant?: PlantName) => void;
+  onEditBatch: (batch: ProductionBatch) => void;
   onDeleteBatch: (id: string) => void;
 }
 
@@ -31,6 +33,7 @@ export default function PlantMixingView({
   batches,
   stockItems,
   onOpenAddBatch,
+  onEditBatch,
   onDeleteBatch,
 }: PlantMixingViewProps) {
   const [selectedPlant, setSelectedPlant] = useState<'All' | PlantName>('All');
@@ -419,6 +422,15 @@ export default function PlantMixingView({
                       title={isExpanded ? 'Collapse' : 'Expand ingredients'}
                     >
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+
+                    {/* Edit Batch */}
+                    <button
+                      onClick={() => onEditBatch(batch)}
+                      className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
+                      title="Edit batch"
+                    >
+                      <Pencil className="w-4 h-4" />
                     </button>
 
                     {/* Delete Batch */}
