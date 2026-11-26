@@ -1,24 +1,29 @@
 /**
- * Compresses an image file in the browser using HTML Canvas.
- * Scales down to maxDimension (default: 600px) and converts to JPEG at quality 0.75.
- * Returns a lightweight base64 data URL suitable for database & offline storage.
+ * Compresses an image file in the browser using HTML Canvas and createObjectURL for peak performance.
+ * Scales down to maxDimension (default: 500px) and converts to JPEG at quality 0.70.
+ * Returns a lightweight base64 data URL (~25-35KB) ideal for cloud DB persistence and offline storage.
  */
-export async function compressImageFile(file: File, maxDimension = 600, quality = 0.75): Promise<string> {
+export async function compressImageFile(file: File, maxDimension = 500, quality = 0.70): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Only process image files
-    if (!file.type.startsWith('image/')) {
-      reject(new Error('Selected file is not an image'));
+    if (!file || !file.type.startsWith('image/')) {
+      reject(new Error('Please select a valid image file'));
       return;
     }
 
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read image file'));
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Failed to load image element'));
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to load image for processing'));
+    };
+
+    img.onload = () => {
+      try {
+        URL.revokeObjectURL(objectUrl);
+
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
 
         // Calculate aspect-ratio preserved dimensions
         if (width > maxDimension || height > maxDimension) {
@@ -32,30 +37,28 @@ export async function compressImageFile(file: File, maxDimension = 600, quality 
         }
 
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = Math.max(1, width);
+        canvas.height = Math.max(1, height);
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          reject(new Error('Failed to get canvas 2D context'));
+          reject(new Error('Failed to initialize 2D canvas context'));
           return;
         }
 
-        // Fill background white for transparent PNGs converted to JPEG
+        // Fill background white for transparent images converted to JPEG
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, width, height);
 
-        // Draw image onto canvas
+        // Draw and compress
         ctx.drawImage(img, 0, 0, width, height);
-
-        // Convert to lightweight JPEG data URL
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedDataUrl);
-      };
-
-      img.src = e.target?.result as string;
+        const compressed = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressed);
+      } catch (err: any) {
+        reject(new Error(err.message || 'Image compression failed'));
+      }
     };
 
-    reader.readAsDataURL(file);
+    img.src = objectUrl;
   });
 }

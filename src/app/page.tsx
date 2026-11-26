@@ -87,21 +87,66 @@ export default function DashboardPage() {
   const syncWithCloud = useCallback(async () => {
     setIsSyncing(true);
     const cloudData = await fetchCloudInventory();
-    if (cloudData) {
-      if (cloudData.items && cloudData.items.length > 0) {
-        setItems(cloudData.items);
-        saveStoredStock(cloudData.items);
-      }
+    if (cloudData && cloudData.items && cloudData.items.length > 0) {
+      setItems((prevItems) => {
+        if (!prevItems || prevItems.length === 0) {
+          saveStoredStock(cloudData.items);
+          return cloudData.items;
+        }
+
+        const cloudMap = new Map(cloudData.items.map((i) => [i.id, i]));
+        const merged = prevItems.map((localItem) => {
+          const remote = cloudMap.get(localItem.id);
+          if (!remote) return localItem;
+          // Prefer whichever is newer based on updatedAt
+          const localTime = new Date(localItem.updatedAt || 0).getTime();
+          const remoteTime = new Date(remote.updatedAt || 0).getTime();
+          // If local was updated within the last 15 seconds, preserve local to avoid race conditions
+          if (Date.now() - localTime < 15000) {
+            return localItem;
+          }
+          return remoteTime >= localTime ? remote : localItem;
+        });
+
+        // Add any newly created items from remote
+        for (const remote of cloudData.items) {
+          if (!prevItems.some((li) => li.id === remote.id)) {
+            merged.push(remote);
+          }
+        }
+
+        saveStoredStock(merged);
+        return merged;
+      });
+
       if (cloudData.logs && cloudData.logs.length > 0) {
         setLogs(cloudData.logs);
         saveStoredLogs(cloudData.logs);
       }
       setIsPostgresConnected(cloudData.postgresActive);
     }
+
     const cloudBatches = await fetchCloudBatches();
-    if (cloudBatches) {
-      setBatches(cloudBatches);
-      saveStoredBatches(cloudBatches);
+    if (cloudBatches && Array.isArray(cloudBatches)) {
+      setBatches((prevBatches) => {
+        if (!prevBatches || prevBatches.length === 0) {
+          saveStoredBatches(cloudBatches);
+          return cloudBatches;
+        }
+        const cloudBatchMap = new Map(cloudBatches.map((b) => [b.id, b]));
+        const mergedBatches = prevBatches.map((localBatch) => {
+          const remote = cloudBatchMap.get(localBatch.id);
+          if (!remote) return localBatch;
+          return remote;
+        });
+        for (const remote of cloudBatches) {
+          if (!prevBatches.some((lb) => lb.id === remote.id)) {
+            mergedBatches.push(remote);
+          }
+        }
+        saveStoredBatches(mergedBatches);
+        return mergedBatches;
+      });
     }
     setIsSyncing(false);
   }, []);
@@ -604,6 +649,12 @@ export default function DashboardPage() {
               setAddBatchOpen(true);
             }}
             onDeleteBatch={handleDeleteBatch}
+            onQuickAdjust={handleQuickAdjust}
+            onEditItem={(item) => setEditTarget(item)}
+            onAdjustItem={(item, isPlus) => setAdjustTarget({ item, isPlus })}
+            onPriceItem={(item) => setPriceTarget(item)}
+            onPreviewImage={(url, title) => setPreviewImage({ url, title })}
+            onOpenAddItem={() => setAddItemOpen(true)}
           />
         ) : (
           <>

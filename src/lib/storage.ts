@@ -38,7 +38,11 @@ export function saveStoredStock(items: StockItem[]) {
   try {
     localStorage.setItem(STORAGE_KEY_STOCK, JSON.stringify(items));
   } catch (err) {
-    console.error('Failed to save stock to localStorage', err);
+    console.warn('Failed to save stock to localStorage, trying without heavy images:', err);
+    try {
+      const stripped = items.map((it) => (it.imageUrl && it.imageUrl.length > 500 ? { ...it, imageUrl: undefined } : it));
+      localStorage.setItem(STORAGE_KEY_STOCK, JSON.stringify(stripped));
+    } catch {}
   }
 }
 

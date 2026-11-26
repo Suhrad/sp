@@ -61,9 +61,16 @@ export function getSupabaseClient(): SupabaseClient | null {
 
   if (!supabaseClient) {
     try {
-      supabaseClient = createClient(url, key, {
+      const options: any = {
         auth: { persistSession: false },
-      });
+      };
+      if (typeof window === 'undefined') {
+        try {
+          const ws = require('ws');
+          options.realtime = { transport: ws };
+        } catch {}
+      }
+      supabaseClient = createClient(url, key, options);
     } catch (err: any) {
       console.warn('Failed to initialize Supabase client:', err.message);
       return null;
@@ -372,7 +379,7 @@ export async function upsertCloudItem(item: StockItem): Promise<void> {
   const sb = getSupabaseClient();
   if (sb) {
     try {
-      await sb.from('inventory_items').upsert({
+      const { error } = await sb.from('inventory_items').upsert({
         id: item.id,
         name: item.name,
         location: item.location,
@@ -389,9 +396,12 @@ export async function upsertCloudItem(item: StockItem): Promise<void> {
         updated_at: item.updatedAt || new Date().toISOString(),
         price_history: item.priceHistory || [],
       });
-      return;
+      if (!error) {
+        return;
+      }
+      console.warn('Supabase upsert failed with error, trying Postgres pool:', error.message);
     } catch (err: any) {
-      console.warn('Supabase upsert failed, trying Postgres pool:', err.message);
+      console.warn('Supabase upsert exception, trying Postgres pool:', err.message);
     }
   }
 
@@ -452,8 +462,8 @@ export async function deleteCloudItem(id: string): Promise<void> {
   const sb = getSupabaseClient();
   if (sb) {
     try {
-      await sb.from('inventory_items').delete().eq('id', id);
-      return;
+      const { error } = await sb.from('inventory_items').delete().eq('id', id);
+      if (!error) return;
     } catch {}
   }
 
@@ -480,10 +490,10 @@ export async function recordCloudLog(log: Omit<StockLog, 'id' | 'timestamp'>): P
   inMemoryLogs.unshift(newLog);
   if (inMemoryLogs.length > 500) inMemoryLogs.pop();
 
-  const sb = getSupabaseClient();
+    const sb = getSupabaseClient();
   if (sb) {
     try {
-      await sb.from('inventory_logs').insert({
+      const { error } = await sb.from('inventory_logs').insert({
         id: newLog.id,
         timestamp: newLog.timestamp,
         item_id: newLog.itemId,
@@ -502,7 +512,9 @@ export async function recordCloudLog(log: Omit<StockLog, 'id' | 'timestamp'>): P
         reason: newLog.reason || null,
         performed_by: newLog.performedBy || 'Admin',
       });
-      return newLog;
+      if (!error) {
+        return newLog;
+      }
     } catch {}
   }
 
@@ -851,7 +863,7 @@ export async function saveCloudBatch(batch: ProductionBatch): Promise<void> {
   const sb = getSupabaseClient();
   if (sb) {
     try {
-      await sb.from('plant_batches').upsert({
+      const { error } = await sb.from('plant_batches').upsert({
         id: batch.id,
         batch_number: batch.batchNumber,
         plant: batch.plant,
@@ -867,9 +879,12 @@ export async function saveCloudBatch(batch: ProductionBatch): Promise<void> {
         total_cost: batch.totalCost || 0,
         created_at: batch.createdAt || new Date().toISOString(),
       });
-      return;
+      if (!error) {
+        return;
+      }
+      console.warn('Supabase saveCloudBatch error, trying Postgres:', error.message);
     } catch (err: any) {
-      console.warn('Supabase saveCloudBatch error:', err.message);
+      console.warn('Supabase saveCloudBatch exception:', err.message);
     }
   }
 
@@ -923,8 +938,10 @@ export async function deleteCloudBatch(id: string): Promise<void> {
   const sb = getSupabaseClient();
   if (sb) {
     try {
-      await sb.from('plant_batches').delete().eq('id', id);
-      return;
+      const { error } = await sb.from('plant_batches').delete().eq('id', id);
+      if (!error) {
+        return;
+      }
     } catch (err: any) {
       console.warn('Supabase deleteCloudBatch error:', err.message);
     }

@@ -23,7 +23,7 @@ export default function AddBatchModal({
   // Available Raw Materials from inventory
   const rawMaterials = useMemo(() => {
     return stockItems.filter(
-      (item) => item.category === 'Raw Material' || item.name.toLowerCase().includes('dana') || item.name.toLowerCase().includes('powder')
+      (item) => item.category === 'Raw Material' || item.name.toLowerCase().includes('dana') || item.name.toLowerCase().includes('powder') || item.name.toLowerCase().includes('chips')
     );
   }, [stockItems]);
 
@@ -32,6 +32,20 @@ export default function AddBatchModal({
   const [targetProduct, setTargetProduct] = useState(initialBatch?.targetProduct || '');
   const [operator, setOperator] = useState(initialBatch?.operator || '');
   const [notes, setNotes] = useState(initialBatch?.notes || '');
+
+  // Plant-specific materials vs other godowns
+  const { plantMaterials, godownMaterials } = useMemo(() => {
+    const pm: StockItem[] = [];
+    const gm: StockItem[] = [];
+    for (const item of rawMaterials) {
+      if (item.location === plant) {
+        pm.push(item);
+      } else {
+        gm.push(item);
+      }
+    }
+    return { plantMaterials: pm, godownMaterials: gm };
+  }, [rawMaterials, plant]);
 
   // Auto-generate batch number with today's date if not editing
   const todayStr = useMemo(() => {
@@ -94,14 +108,21 @@ export default function AddBatchModal({
   };
 
   // When a raw material is picked from dropdown
-  const handleSelectMaterial = (rowId: string, selectedName: string) => {
-    const matched = rawMaterials.find((m) => m.name === selectedName);
-    updateItem(rowId, {
-      materialName: selectedName,
-      itemId: matched?.id,
-      sourceGodown: matched?.location,
-      ratePerKg: matched?.currentPrice || 0,
-    });
+  const handleSelectMaterial = (rowId: string, selectedValue: string) => {
+    // Check if selectedValue is an item id, or matches item name
+    const matched = stockItems.find((m) => m.id === selectedValue || m.name === selectedValue);
+    if (matched) {
+      updateItem(rowId, {
+        materialName: matched.name,
+        itemId: matched.id,
+        sourceGodown: matched.location,
+        ratePerKg: matched.currentPrice || 0,
+      });
+    } else {
+      updateItem(rowId, {
+        materialName: selectedValue,
+      });
+    }
   };
 
   // Add new ingredient row
@@ -323,19 +344,45 @@ export default function AddBatchModal({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">
-                        Material #{idx + 1}
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[10px] font-mono text-zinc-400 uppercase">
+                          Material #{idx + 1}
+                        </label>
+                        {/* Live Stock Badge */}
+                        {(() => {
+                          const matched = stockItems.find((s) => s.id === it.itemId || s.name === it.materialName);
+                          if (!matched) return null;
+                          const isLow = matched.totalBags <= 5;
+                          return (
+                            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-semibold ${
+                              isLow ? 'bg-amber-950/60 text-amber-400 border border-amber-800/60' : 'bg-emerald-950/50 text-emerald-400 border border-emerald-800/40'
+                            }`}>
+                              Available: {matched.totalBags} bags ({matched.kg} kg) • {matched.location}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <select
-                        value={it.materialName}
+                        value={it.itemId || it.materialName}
                         onChange={(e) => handleSelectMaterial(it.id, e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-zinc-500"
+                        className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-zinc-500 font-mono"
                       >
-                        {rawMaterials.map((rm) => (
-                          <option key={`${rm.id}-${rm.name}`} value={rm.name}>
-                            {rm.name} ({rm.location}) — ₹{rm.currentPrice}/kg
-                          </option>
-                        ))}
+                        {plantMaterials.length > 0 && (
+                          <optgroup label={`🏭 In ${plant} Stock`}>
+                            {plantMaterials.map((rm) => (
+                              <option key={rm.id} value={rm.id}>
+                                {rm.name} — {rm.totalBags} bags ({rm.kg} kg) • ₹{rm.currentPrice}/kg
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        <optgroup label="📦 Other Godowns & Yard">
+                          {godownMaterials.map((rm) => (
+                            <option key={rm.id} value={rm.id}>
+                              {rm.name} ({rm.location}) — {rm.totalBags} bags ({rm.kg} kg) • ₹{rm.currentPrice}/kg
+                            </option>
+                          ))}
+                        </optgroup>
                       </select>
                     </div>
 

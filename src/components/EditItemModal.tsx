@@ -328,19 +328,23 @@ export default function EditItemModal({
             />
 
             {imageUrl ? (
-              <div className="relative w-full h-32 bg-[#09090b] border border-zinc-800 rounded-lg overflow-hidden flex items-center justify-center group">
-                <img
-                  src={imageUrl}
-                  alt="Material preview"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <div className="space-y-2">
+                <div className="relative w-full h-32 bg-[#09090b] border border-zinc-800 rounded-lg overflow-hidden flex items-center justify-center">
+                  <img
+                    src={imageUrl}
+                    alt="Material preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-2.5 py-1 bg-white text-black text-xs font-mono font-bold rounded"
+                    disabled={isCompressingImage}
+                    className="flex-1 py-1.5 px-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 hover:text-white text-xs font-mono font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
                   >
-                    Change
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Change Photo</span>
                   </button>
                   <button
                     type="button"
@@ -348,7 +352,7 @@ export default function EditItemModal({
                       setImageUrl('');
                       if (fileInputRef.current) fileInputRef.current.value = '';
                     }}
-                    className="px-2.5 py-1 bg-red-600 text-white text-xs font-mono font-bold rounded"
+                    className="py-1.5 px-3 bg-red-950/60 hover:bg-red-900/80 border border-red-800/80 text-red-300 text-xs font-mono font-bold rounded-lg transition-colors"
                   >
                     Remove
                   </button>
